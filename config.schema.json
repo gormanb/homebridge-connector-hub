@@ -1,15 +1,22 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "homebridge-connector-hub",
   "pluginType": "platform",
   "singular": true,
   "schema": {
     "type": "object",
     "properties": {
       "name": {
-        "title": "Name",
+        "title": "Connector Key",
         "type": "string",
-        "required": true,
-        "default": "Example Dynamic Platform"
+        "required": true
+      },
+      "blinds_array": {
+        "title": "Blinds",
+        "type": "array",
+        "items": {
+          "title": "Name",
+          "type": "string"
+        }
       }
     }
   }

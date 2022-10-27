@@ -1,16 +1,16 @@
 {
   "private": true,
-  "displayName": "Plugin Name",
-  "name": "homebridge-plugin-name",
-  "version": "1.0.0",
-  "description": "A short description about what your plugin does.",
+  "displayName": "HomeBridge Connector Hub",
+  "name": "homebridge-connector-hub",
+  "version": "0.0.1",
+  "description": "A HomeBridge plugin to expose Connector+ compatible window blinds to Homekit",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME.git"
+    "url": "https://github.com/gormanb/homebridge-connector-hub.git"
   },
   "bugs": {
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME/issues"
+    "url": "https://github.com/gormanb/homebridge-connector-hub/issues"
   },
   "engines": {
     "node": ">=14.18.1",
