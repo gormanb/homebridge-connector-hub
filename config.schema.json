@@ -1,22 +1,14 @@
 {
-  "pluginAlias": "homebridge-connector-hub",
+  "pluginAlias": "ConnectorHub",
   "pluginType": "platform",
   "singular": true,
   "schema": {
     "type": "object",
     "properties": {
-      "name": {
+      "connectorKey": {
         "title": "Connector Key",
         "type": "string",
         "required": true
-      },
-      "blinds_array": {
-        "title": "Blinds",
-        "type": "array",
-        "items": {
-          "title": "Name",
-          "type": "string"
-        }
       }
     }
   }
