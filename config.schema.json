@@ -8,7 +8,14 @@
       "connectorKey": {
         "title": "Connector Key",
         "type": "string",
+        "description": "Key obtained from the Connector app. Go to Profile > About and tap the screen five times.",
         "required": true
+      },
+      "hubIp": {
+        "title": "Connector Hub IP",
+        "type": "string",
+        "description": "IP of the Connector hub device. Fill this in if UDP multicast discovery is not working.",
+        "required": false
       }
     }
   }

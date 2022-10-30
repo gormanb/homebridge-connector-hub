@@ -16,7 +16,6 @@ export class BlindAccessory {
 
   private static readonly kMinRefreshInterval = 2000;
   private lastRefresh = (new Date(0)).getTime();
-  private currentState = null;
 
   constructor(
       private readonly platform: ConnectorHubPlatform,
@@ -73,24 +72,17 @@ export class BlindAccessory {
     connectorhub.getDeviceState({
       deviceInfo: this.accessory.context.device,
       callback: (response) => {
-        const currentState = (this.currentState || response);
-
+        // Note that the hub reports 0 as fully open and 100 as closed; Homekit
+        // expects the opposite.
         this.blindService.updateCharacteristic(
             this.platform.Characteristic.CurrentPosition,
-            response.currentPosition);
+            100 - response.data.currentPosition);
 
-        const direction =
-            response.currentPosition - currentState.currentPosition;
-        const posState =
-            (direction === 0 ?
-                 this.platform.Characteristic.PositionState.STOPPED :
-                 (direction > 0) ?
-                 this.platform.Characteristic.PositionState.INCREASING :
-                 this.platform.Characteristic.PositionState.DECREASING);
+        // The 'operation' value mirrors the PositionState enum
+        // 0 = decreasing, 1 = increasing, 2 = stopped
         this.blindService.updateCharacteristic(
-            this.platform.Characteristic.PositionState, posState);
-
-        this.currentState = response;
+            this.platform.Characteristic.PositionState,
+            response.data.operation);
       },
     });
   }
@@ -101,12 +93,14 @@ export class BlindAccessory {
    * example, turning on a Light bulb.
    */
   async setTargetPosition(value: CharacteristicValue) {
+    // Homekit positions are the inverse of what the hub expects.
+    const adjustedTarget = (100 - <number>value);
     connectorhub.setTargetPositionOrAngle({
       deviceInfo: this.accessory.context.device,
       accessToken: this.platform.getAccessToken(),
       cmdType: 'targetPosition',
-      cmdValue: value.valueOf(),
-      callback: () => { /* no-op */ },
+      cmdValue: adjustedTarget,
+      callback: () => {/* no-op */},
     });
     this.platform.log.debug('Set Characteristic TargetPosition ->', value);
   }

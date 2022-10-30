@@ -1,7 +1,9 @@
 import aesjs = require('aes-js');
 import dgram = require('dgram');
 
-const sendIp = '238.0.0.18';
+export const kMulticastIp = '238.0.0.18';
+
+const sendIp = '192.168.1.9';
 const sendPort = 32100;
 
 const opCodes = ['close', 'open', 'stop', undefined, undefined, 'status'];
@@ -121,8 +123,4 @@ export function setTargetPositionOrAngle(
     {deviceInfo, accessToken, cmdType, cmdValue, callback}) {
   const command = {[cmdType]: cmdValue};
   setDeviceState({deviceInfo, accessToken, command, callback});
-}
-
-export function processRawDeviceInfo(deviceInfo) {
-  // TODO: populate the various codes with human-readable equivalents.
 }
