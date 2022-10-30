@@ -2,7 +2,7 @@
 import {API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service} from 'homebridge';
 
 import {BlindAccessory} from './blindAccessory';
-import {ConnectorHubClient} from './connectorHubClient';
+import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 
 /**
@@ -17,11 +17,8 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
 
-  private client: ConnectorHubClient;
-
   // Details about the connector bridge itself.
-  private accessToken = null;
-  private hubInfo = null;
+  private hubInfo: object|null = null;
 
   constructor(
       public readonly log: Logger,
@@ -29,9 +26,6 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       public readonly api: API,
   ) {
     this.log.debug('Finished initializing platform:', this.config.name);
-
-    // Create a new client connection to the hub.
-    this.client = new ConnectorHubClient(this.config, this.log);
 
     // When this event is fired it means Homebridge has restored all cached
     // accessories from disk. Dynamic Platform plugins should only register new
@@ -43,10 +37,6 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       // run the method to discover / register your devices as accessories
       this.discoverDevices();
     });
-  }
-
-  getAccessToken() {
-    return this.accessToken;
   }
 
   /**
@@ -70,74 +60,71 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   discoverDevices() {
     // A real plugin you would discover accessories from the local network,
     // cloud services or a user-defined array in the platform config.
-    this.client.getDeviceList({
-      callback: (response) => {
-        this.hubInfo = response;
+    ConnectorHubClient.getDeviceList(
+        this.config.hubIp,
+        (response) => {
+          // loop over the discovered devices and register each one if it has
+          // not already been registered
+          for (let devNum = 1; devNum < response.data.length; ++devNum) {
+            // generate a unique id for the accessory this should be generated
+            // from
+            // something globally unique, but constant, for example, the device
+            // serial number or MAC address
+            const device = Object.assign(
+                {displayName: `Blind ${devNum}`}, response.data[devNum]);
+            const uuid = this.api.hap.uuid.generate(device.mac);
 
-        this.accessToken = ConnectorHubClient.computeAccessToken(
-            {connectorKey: this.config.connectorKey, hubToken: response.token});
+            // see if an accessory with the same uuid has already been
+            // registered and restored from the cached devices we stored in the
+            // `configureAccessory` method above
+            const existingAccessory =
+                this.accessories.find(accessory => accessory.UUID === uuid);
 
-        // loop over the discovered devices and register each one if it has not
-        // already been registered
-        for (let devNum = 1; devNum < response.data.length; ++devNum) {
-          // generate a unique id for the accessory this should be generated
-          // from
-          // something globally unique, but constant, for example, the device
-          // serial number or MAC address
-          const device = Object.assign(
-              {displayName: `Blind ${devNum}`}, response.data[devNum]);
-          const uuid = this.api.hap.uuid.generate(device.mac);
+            if (existingAccessory) {
+              // the accessory already exists
+              this.log.info(
+                  'Restoring existing accessory from cache:',
+                  existingAccessory.displayName);
 
-          // see if an accessory with the same uuid has already been registered
-          // and restored from the cached devices we stored in the
-          // `configureAccessory` method above
-          const existingAccessory =
-              this.accessories.find(accessory => accessory.UUID === uuid);
+              // if you need to update the accessory.context then you should run
+              // `api.updatePlatformAccessories`. eg.:
+              // existingAccessory.context.device = device;
+              // this.api.updatePlatformAccessories([existingAccessory]);
 
-          if (existingAccessory) {
-            // the accessory already exists
-            this.log.info(
-                'Restoring existing accessory from cache:',
-                existingAccessory.displayName);
+              // create the accessory handler for the restored accessory
+              // this is imported from `platformAccessory.ts`
+              new BlindAccessory(this, existingAccessory, response.token);
 
-            // if you need to update the accessory.context then you should run
-            // `api.updatePlatformAccessories`. eg.:
-            // existingAccessory.context.device = device;
-            // this.api.updatePlatformAccessories([existingAccessory]);
+              // it is possible to remove platform accessories at any time using
+              // `api.unregisterPlatformAccessories`, eg.: remove platform
+              // accessories when no longer present
+              // this.api.unregisterPlatformAccessories(PLUGIN_NAME,
+              // PLATFORM_NAME, [existingAccessory]); this.log.info('Removing
+              // existing accessory from cache:',
+              // existingAccessory.displayName);
+            } else {
+              // the accessory does not yet exist, so we need to create it
+              this.log.info('Adding new accessory:', device.displayName);
 
-            // create the accessory handler for the restored accessory
-            // this is imported from `platformAccessory.ts`
-            new BlindAccessory(this, existingAccessory);
+              // create a new accessory
+              const accessory =
+                  new this.api.platformAccessory(device.displayName, uuid);
 
-            // it is possible to remove platform accessories at any time using
-            // `api.unregisterPlatformAccessories`, eg.: remove platform
-            // accessories when no longer present
-            // this.api.unregisterPlatformAccessories(PLUGIN_NAME,
-            // PLATFORM_NAME, [existingAccessory]); this.log.info('Removing
-            // existing accessory from cache:', existingAccessory.displayName);
-          } else {
-            // the accessory does not yet exist, so we need to create it
-            this.log.info('Adding new accessory:', device.displayName);
+              // store a copy of the device object in the `accessory.context`
+              // the `context` property can be used to store any data about the
+              // accessory you may need
+              accessory.context.device = device;
 
-            // create a new accessory
-            const accessory =
-                new this.api.platformAccessory(device.displayName, uuid);
+              // create the accessory handler for the newly create accessory
+              // this is imported from `platformAccessory.ts`
+              new BlindAccessory(this, accessory, response.token);
 
-            // store a copy of the device object in the `accessory.context`
-            // the `context` property can be used to store any data about the
-            // accessory you may need
-            accessory.context.device = device;
-
-            // create the accessory handler for the newly create accessory
-            // this is imported from `platformAccessory.ts`
-            new BlindAccessory(this, accessory);
-
-            // link the accessory to your platform
-            this.api.registerPlatformAccessories(
-                PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+              // link the accessory to your platform
+              this.api.registerPlatformAccessories(
+                  PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            }
           }
-        }
-      },
-    });
+        },
+    );
   }
 }

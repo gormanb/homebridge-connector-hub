@@ -1,7 +1,7 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
-import {ConnectorHubClient} from './connectorHubClient';
+import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
 
 /**
@@ -22,10 +22,12 @@ export class BlindAccessory {
   constructor(
       private readonly platform: ConnectorHubPlatform,
       private readonly accessory: PlatformAccessory,
+      private readonly hubToken: string,
   ) {
-    // Create a new client connection to the hub.
-    this.client =
-        new ConnectorHubClient(this.platform.config, this.platform.log);
+    // Create a new client connection for this device.
+    this.client = new ConnectorHubClient(
+        this.platform.config, this.accessory.context.device, this.hubToken,
+        this.platform.log);
 
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
@@ -75,22 +77,21 @@ export class BlindAccessory {
   }
 
   updateDeviceStatus() {
-    this.client.getDeviceState({
-      deviceInfo: this.accessory.context.device,
-      callback: (response) => {
-        // Note that the hub reports 0 as fully open and 100 as closed; Homekit
-        // expects the opposite.
-        this.blindService.updateCharacteristic(
-            this.platform.Characteristic.CurrentPosition,
-            100 - response.data.currentPosition);
+    this.client.getDeviceState(
+        (response) => {
+          // Note that the hub reports 0 as fully open and 100 as closed;
+          // Homekit expects the opposite.
+          this.blindService.updateCharacteristic(
+              this.platform.Characteristic.CurrentPosition,
+              100 - response.data.currentPosition);
 
-        // The 'operation' value mirrors the PositionState enum
-        // 0 = decreasing, 1 = increasing, 2 = stopped
-        this.blindService.updateCharacteristic(
-            this.platform.Characteristic.PositionState,
-            response.data.operation);
-      },
-    });
+          // The 'operation' value mirrors the PositionState enum
+          // 0 = decreasing, 1 = increasing, 2 = stopped
+          this.blindService.updateCharacteristic(
+              this.platform.Characteristic.PositionState,
+              response.data.operation);
+        },
+    );
   }
 
   /**
@@ -101,13 +102,10 @@ export class BlindAccessory {
   async setTargetPosition(value: CharacteristicValue) {
     // Homekit positions are the inverse of what the hub expects.
     const adjustedTarget = (100 - <number>value);
-    this.client.setTargetPositionOrAngle({
-      deviceInfo: this.accessory.context.device,
-      accessToken: this.platform.getAccessToken(),
-      cmdType: 'targetPosition',
-      cmdValue: adjustedTarget,
-      callback: () => {/* no-op */},
-    });
+    this.client.setTargetPosition(
+        adjustedTarget,
+        (response) => {/* no-op */},
+    );
     this.platform.log.debug('Set Characteristic TargetPosition ->', value);
   }
 
