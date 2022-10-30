@@ -1,7 +1,7 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
-import * as connectorhub from './connector-helpers';
+import {ConnectorHubClient} from './connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
 
 /**
@@ -17,10 +17,16 @@ export class BlindAccessory {
   private static readonly kMinRefreshInterval = 2000;
   private lastRefresh = (new Date(0)).getTime();
 
+  private client: ConnectorHubClient;
+
   constructor(
       private readonly platform: ConnectorHubPlatform,
       private readonly accessory: PlatformAccessory,
   ) {
+    // Create a new client connection to the hub.
+    this.client =
+        new ConnectorHubClient(this.platform.config, this.platform.log);
+
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
         .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Dooya');
@@ -69,7 +75,7 @@ export class BlindAccessory {
   }
 
   updateDeviceStatus() {
-    connectorhub.getDeviceState({
+    this.client.getDeviceState({
       deviceInfo: this.accessory.context.device,
       callback: (response) => {
         // Note that the hub reports 0 as fully open and 100 as closed; Homekit
@@ -95,7 +101,7 @@ export class BlindAccessory {
   async setTargetPosition(value: CharacteristicValue) {
     // Homekit positions are the inverse of what the hub expects.
     const adjustedTarget = (100 - <number>value);
-    connectorhub.setTargetPositionOrAngle({
+    this.client.setTargetPositionOrAngle({
       deviceInfo: this.accessory.context.device,
       accessToken: this.platform.getAccessToken(),
       cmdType: 'targetPosition',

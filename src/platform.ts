@@ -2,7 +2,7 @@
 import {API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service} from 'homebridge';
 
 import {BlindAccessory} from './blindAccessory';
-import * as connectorhub from './connector-helpers';
+import {ConnectorHubClient} from './connectorHubClient';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 
 /**
@@ -17,6 +17,8 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
 
+  private client: ConnectorHubClient;
+
   // Details about the connector bridge itself.
   private accessToken = null;
   private hubInfo = null;
@@ -27,6 +29,9 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       public readonly api: API,
   ) {
     this.log.debug('Finished initializing platform:', this.config.name);
+
+    // Create a new client connection to the hub.
+    this.client = new ConnectorHubClient(this.config, this.log);
 
     // When this event is fired it means Homebridge has restored all cached
     // accessories from disk. Dynamic Platform plugins should only register new
@@ -65,11 +70,11 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   discoverDevices() {
     // A real plugin you would discover accessories from the local network,
     // cloud services or a user-defined array in the platform config.
-    connectorhub.getDeviceList({
+    this.client.getDeviceList({
       callback: (response) => {
         this.hubInfo = response;
 
-        this.accessToken = connectorhub.computeAccessToken(
+        this.accessToken = ConnectorHubClient.computeAccessToken(
             {connectorKey: this.config.connectorKey, hubToken: response.token});
 
         // loop over the discovered devices and register each one if it has not
