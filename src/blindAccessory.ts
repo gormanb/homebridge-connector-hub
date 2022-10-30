@@ -67,7 +67,6 @@ export class BlindAccessory {
     // register handlers for the TargetPosition Characteristic
     this.blindService
         .getCharacteristic(this.platform.Characteristic.TargetPosition)
-        //.onGet(this.getTargetPosition.bind(this))
         .onSet(this.setTargetPosition.bind(this));
 
     // Periodically refresh the status of the device.
@@ -76,22 +75,21 @@ export class BlindAccessory {
     }, BlindAccessory.kMinRefreshInterval);
   }
 
-  updateDeviceStatus() {
-    this.client.getDeviceState(
-        (response) => {
-          // Note that the hub reports 0 as fully open and 100 as closed;
-          // Homekit expects the opposite.
-          this.blindService.updateCharacteristic(
-              this.platform.Characteristic.CurrentPosition,
-              100 - response.data.currentPosition);
+  async updateDeviceStatus() {
+    const response = await this.client.getDeviceState();
+    if (!response) {
+      return;
+    }
+    // Note that the hub reports 0 as fully open and 100 as closed;
+    // Homekit expects the opposite.
+    this.blindService.updateCharacteristic(
+        this.platform.Characteristic.CurrentPosition,
+        100 - response.data.currentPosition);
 
-          // The 'operation' value mirrors the PositionState enum
-          // 0 = decreasing, 1 = increasing, 2 = stopped
-          this.blindService.updateCharacteristic(
-              this.platform.Characteristic.PositionState,
-              response.data.operation);
-        },
-    );
+    // The 'operation' value mirrors the PositionState enum
+    // 0 = decreasing, 1 = increasing, 2 = stopped
+    this.blindService.updateCharacteristic(
+        this.platform.Characteristic.PositionState, response.data.operation);
   }
 
   /**
@@ -102,10 +100,11 @@ export class BlindAccessory {
   async setTargetPosition(value: CharacteristicValue) {
     // Homekit positions are the inverse of what the hub expects.
     const adjustedTarget = (100 - <number>value);
-    this.client.setTargetPosition(
-        adjustedTarget,
-        (response) => {/* no-op */},
-    );
+    const ack = await this.client.setTargetPosition(adjustedTarget);
+    if (!ack) {
+      throw new this.platform.api.hap.HapStatusError(
+          this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
     this.platform.log.debug('Set Characteristic TargetPosition ->', value);
   }
 

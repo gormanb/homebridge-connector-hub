@@ -1,24 +1,24 @@
 /* eslint-disable indent */
-import * as dgram from 'dgram';
+import {DgramAsPromised} from 'dgram-as-promised';
 import {Logger, PlatformConfig} from 'homebridge';
 
 import * as consts from './connector-hub-constants';
 import * as helpers from './connector-hub-helpers';
 
-type CallbackFunc = (response: any) => void;
+const kSocketTimeout = 500;
 
-function sendCommand(cmdObj: object, ip: string, callback: CallbackFunc) {
-  const socket = dgram.createSocket('udp4');
-  socket.on('error', (ex) => {
-    socket.close();
-    throw ex;
-  });
-  socket.on('message', (msg, info) => {
-    socket.close();
-    callback(JSON.parse(msg.toString()));
-  });
+async function sendCommand(cmdObj: object, ip: string): Promise<any|undefined> {
+  // Create a new socket to service this request.
+  const socket = DgramAsPromised.createSocket('udp4');
+  setTimeout(socket.destroy, kSocketTimeout);
+
+  // Send the message...
   const sendMsg = Buffer.from(JSON.stringify(cmdObj));
   socket.send(sendMsg, consts.kSendPort, ip);
+  const response = await socket.recv();
+
+  // ... and return a parsed response, if the operation was successful.
+  return (response ? JSON.parse(response.msg.toString()) : undefined);
 }
 
 export class ConnectorHubClient {
@@ -36,28 +36,28 @@ export class ConnectorHubClient {
         {connectorKey: this.config.connectorKey, hubToken: this.hubToken});
   }
 
-  public static getDeviceList(ip: string|undefined, callback: CallbackFunc) {
+  public static getDeviceList(ip: string|undefined) {
     const sendIp = (ip || consts.kMulticastIp);
-    sendCommand(helpers.makeGetDeviceListRequest(), sendIp, callback);
+    return sendCommand(helpers.makeGetDeviceListRequest(), sendIp);
   }
 
-  public getDeviceState(callback: CallbackFunc) {
-    sendCommand(
-        helpers.makeReadDeviceRequest(this.deviceInfo), this.sendIp, callback);
+  public getDeviceState() {
+    return sendCommand(
+        helpers.makeReadDeviceRequest(this.deviceInfo), this.sendIp);
   }
 
-  public setTargetPosition(position: number, callback: CallbackFunc) {
-    this.setDeviceState({targetPosition: position}, callback);
+  public setTargetPosition(position: number) {
+    return this.setDeviceState({targetPosition: position});
   }
 
-  public setTargetAngle(angle: number, callback: CallbackFunc) {
-    this.setDeviceState({targetAngle: angle}, callback);
+  public setTargetAngle(angle: number) {
+    return this.setDeviceState({targetAngle: angle});
   }
 
   // 'command' is a string command or an object indicating command and value.
-  private setDeviceState(command: object, callback: CallbackFunc) {
+  private setDeviceState(command: object) {
     const request = helpers.makeWriteDeviceRequest(
-        {deviceInfo: this.deviceInfo, accessToken: this.accessToken, command});
-    sendCommand(request, this.sendIp, callback);
+        this.deviceInfo, this.accessToken, command);
+    return sendCommand(request, this.sendIp);
   }
 }

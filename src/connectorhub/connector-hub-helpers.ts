@@ -1,6 +1,7 @@
 /*
  * Generic helper functions for the ConnectorHubClient.
  */
+/* eslint-disable indent */
 import * as aesjs from 'aes-js';
 
 import {opCodes} from './connector-hub-constants';
@@ -18,7 +19,7 @@ export function makeMsgId() {
 }
 
 // 'command' is a string mapping to an opCode or is already a command object.
-export function makeCommandData(command: (string|object)) {
+export function makeCommandData(command: string|object) {
   if (typeof command === 'string') {
     return {operation: opCodes.indexOf(command)};
   }
@@ -38,7 +39,8 @@ export function makeReadDeviceRequest(deviceInfo) {
   };
 }
 
-export function makeWriteDeviceRequest({deviceInfo, accessToken, command}) {
+export function makeWriteDeviceRequest(
+    deviceInfo: any, accessToken: string, command: object) {
   return {
     msgType: 'WriteDevice',
     mac: deviceInfo.mac,

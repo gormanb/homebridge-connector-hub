@@ -17,9 +17,6 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
 
-  // Details about the connector bridge itself.
-  private hubInfo: object|null = null;
-
   constructor(
       public readonly log: Logger,
       public readonly config: PlatformConfig,
@@ -57,74 +54,75 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
    * Accessories must only be registered once, previously created accessories
    * must not be registered again to prevent "duplicate UUID" errors.
    */
-  discoverDevices() {
+  async discoverDevices() {
     // A real plugin you would discover accessories from the local network,
     // cloud services or a user-defined array in the platform config.
-    ConnectorHubClient.getDeviceList(
-        this.config.hubIp,
-        (response) => {
-          // loop over the discovered devices and register each one if it has
-          // not already been registered
-          for (let devNum = 1; devNum < response.data.length; ++devNum) {
-            // generate a unique id for the accessory this should be generated
-            // from
-            // something globally unique, but constant, for example, the device
-            // serial number or MAC address
-            const device = Object.assign(
-                {displayName: `Blind ${devNum}`}, response.data[devNum]);
-            const uuid = this.api.hap.uuid.generate(device.mac);
+    const response = await ConnectorHubClient.getDeviceList(this.config.hubIp);
+    if (!response) {
+      throw new this.api.hap.HapStatusError(
+          this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
 
-            // see if an accessory with the same uuid has already been
-            // registered and restored from the cached devices we stored in the
-            // `configureAccessory` method above
-            const existingAccessory =
-                this.accessories.find(accessory => accessory.UUID === uuid);
+    // loop over the discovered devices and register each one if it has
+    // not already been registered
+    for (let devNum = 1; devNum < response.data.length; ++devNum) {
+      // generate a unique id for the accessory this should be generated
+      // from
+      // something globally unique, but constant, for example, the device
+      // serial number or MAC address
+      const device = Object.assign(
+          {displayName: `Blind ${devNum}`}, response.data[devNum]);
+      const uuid = this.api.hap.uuid.generate(device.mac);
 
-            if (existingAccessory) {
-              // the accessory already exists
-              this.log.info(
-                  'Restoring existing accessory from cache:',
-                  existingAccessory.displayName);
+      // see if an accessory with the same uuid has already been
+      // registered and restored from the cached devices we stored in the
+      // `configureAccessory` method above
+      const existingAccessory =
+          this.accessories.find(accessory => accessory.UUID === uuid);
 
-              // if you need to update the accessory.context then you should run
-              // `api.updatePlatformAccessories`. eg.:
-              // existingAccessory.context.device = device;
-              // this.api.updatePlatformAccessories([existingAccessory]);
+      if (existingAccessory) {
+        // the accessory already exists
+        this.log.info(
+            'Restoring existing accessory from cache:',
+            existingAccessory.displayName);
 
-              // create the accessory handler for the restored accessory
-              // this is imported from `platformAccessory.ts`
-              new BlindAccessory(this, existingAccessory, response.token);
+        // if you need to update the accessory.context then you should run
+        // `api.updatePlatformAccessories`. eg.:
+        // existingAccessory.context.device = device;
+        // this.api.updatePlatformAccessories([existingAccessory]);
 
-              // it is possible to remove platform accessories at any time using
-              // `api.unregisterPlatformAccessories`, eg.: remove platform
-              // accessories when no longer present
-              // this.api.unregisterPlatformAccessories(PLUGIN_NAME,
-              // PLATFORM_NAME, [existingAccessory]); this.log.info('Removing
-              // existing accessory from cache:',
-              // existingAccessory.displayName);
-            } else {
-              // the accessory does not yet exist, so we need to create it
-              this.log.info('Adding new accessory:', device.displayName);
+        // create the accessory handler for the restored accessory
+        // this is imported from `platformAccessory.ts`
+        new BlindAccessory(this, existingAccessory, response.token);
 
-              // create a new accessory
-              const accessory =
-                  new this.api.platformAccessory(device.displayName, uuid);
+        // it is possible to remove platform accessories at any time using
+        // `api.unregisterPlatformAccessories`, eg.: remove platform
+        // accessories when no longer present
+        // this.api.unregisterPlatformAccessories(PLUGIN_NAME,
+        // PLATFORM_NAME, [existingAccessory]); this.log.info('Removing
+        // existing accessory from cache:',
+        // existingAccessory.displayName);
+      } else {
+        // the accessory does not yet exist, so we need to create it
+        this.log.info('Adding new accessory:', device.displayName);
 
-              // store a copy of the device object in the `accessory.context`
-              // the `context` property can be used to store any data about the
-              // accessory you may need
-              accessory.context.device = device;
+        // create a new accessory
+        const accessory =
+            new this.api.platformAccessory(device.displayName, uuid);
 
-              // create the accessory handler for the newly create accessory
-              // this is imported from `platformAccessory.ts`
-              new BlindAccessory(this, accessory, response.token);
+        // store a copy of the device object in the `accessory.context`
+        // the `context` property can be used to store any data about the
+        // accessory you may need
+        accessory.context.device = device;
 
-              // link the accessory to your platform
-              this.api.registerPlatformAccessories(
-                  PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-            }
-          }
-        },
-    );
+        // create the accessory handler for the newly create accessory
+        // this is imported from `platformAccessory.ts`
+        new BlindAccessory(this, accessory, response.token);
+
+        // link the accessory to your platform
+        this.api.registerPlatformAccessories(
+            PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      }
+    }
   }
 }
