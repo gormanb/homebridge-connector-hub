@@ -66,11 +66,6 @@ export class BlindAccessory {
         .getCharacteristic(this.platform.Characteristic.CurrentPosition)
         .onGet(this.getCurrentPosition.bind(this));
 
-    // register handlers for the PositionState Characteristic
-    this.blindService
-        .getCharacteristic(this.platform.Characteristic.PositionState)
-        .onGet(this.getPositionState.bind(this));
-
     // register handlers for the TargetPosition Characteristic
     this.blindService
         .getCharacteristic(this.platform.Characteristic.TargetPosition)
@@ -99,6 +94,10 @@ export class BlindAccessory {
       const newPos = (100 - newState.data.currentPosition);
       this.platform.log.debug(
           'Updating position ', [this.accessory.displayName, newPos]);
+      // Update the TargetPosition, since we've just reached it, and the actual
+      // CurrentPosition. Syncs Homekit if blinds are moved by another app.
+      this.blindService.updateCharacteristic(
+          this.platform.Characteristic.TargetPosition, newPos);
       this.blindService.updateCharacteristic(
           this.platform.Characteristic.CurrentPosition, newPos);
     }
@@ -115,7 +114,9 @@ export class BlindAccessory {
     // responsiveness over time; we therefore use passive read requests, which
     // only update the state after each movement is complete. This means that
     // only the position ever changes; the PositionState is always STOPPED. For
-    // this reason, we don't bother reporting it.
+    // this reason, we don't bother reporting it. It is sufficient to report the
+    // TargetPosition and CurrentPosition, and this also makes it simple to keep
+    // Homekit in sync with external movement of the blinds.
   }
 
   /**
@@ -165,17 +166,5 @@ export class BlindAccessory {
     this.platform.log.debug(
         'Returning position: ', [this.accessory.displayName, currentPos]);
     return currentPos;
-  }
-
-  async getPositionState(): Promise<CharacteristicValue> {
-    if (!this.currentState) {
-      this.platform.log.debug(
-          'Failed to get position state: ', this.accessory.displayName);
-      throw new this.platform.api.hap.HapStatusError(
-          this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
-    }
-    // The 'operation' value mirrors the PositionState enum
-    // 0 = decreasing, 1 = increasing, 2 = stopped
-    return this.currentState.data.operation;
   }
 }
