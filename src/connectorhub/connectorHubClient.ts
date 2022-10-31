@@ -44,8 +44,7 @@ export class ConnectorHubClient {
   }
 
   public getDeviceState() {
-    const command =
-        helpers.makeReadDeviceRequest(this.deviceInfo, this.accessToken);
+    const command = helpers.makeReadDeviceRequest(this.deviceInfo);
     return sendCommand(command, this.socket, this.sendIp);
   }
 

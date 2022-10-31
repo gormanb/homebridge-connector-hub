@@ -82,7 +82,7 @@ export class BlindAccessory {
     const newState = await this.client.getDeviceState();
 
     // Update the cached current and last-good copies of the device status.
-    this.lastState = (this.currentState || this.lastState || newState);
+    this.lastState = (this.currentState || this.lastState);
     this.currentState = newState;
 
     // If we didn't hear back from the device, exit early.
@@ -91,22 +91,31 @@ export class BlindAccessory {
       return;
     }
 
-    // Note that the hub reports 0 as fully open and 100 as closed;
-    // Homekit expects the opposite.
-    if (newState.data.currentPosition !== this.lastState.data.currentPosition) {
-      this.platform.log.debug('Updating position ', this.accessory.displayName);
+    // Note that the hub reports 0 as fully open and 100 as closed; Homekit
+    // expects the opposite. We extract 'lastPos' as below because lastState
+    // will be undefined on the first iteration, and so we force an update.
+    const lastPos = (this.lastState && this.lastState.data.currentPosition);
+    if (newState.data.currentPosition !== lastPos) {
+      const newPos = (100 - newState.data.currentPosition);
+      this.platform.log.debug(
+          'Updating position ', [this.accessory.displayName, newPos]);
       this.blindService.updateCharacteristic(
-          this.platform.Characteristic.CurrentPosition,
-          100 - newState.data.currentPosition);
+          this.platform.Characteristic.CurrentPosition, newPos);
     }
 
-    // The 'operation' value mirrors the PositionState enum
-    // 0 = decreasing, 1 = increasing, 2 = stopped
-    if (newState.data.operation !== this.lastState.data.operation) {
-      this.platform.log.debug('Updating state ', this.accessory.displayName);
-      this.blindService.updateCharacteristic(
-          this.platform.Characteristic.PositionState, newState.data.operation);
-    }
+    // The 'data.operation' value mirrors the Characteristic.PositionState enum:
+    //
+    // PositionState extends Characteristic {
+    //   static readonly DECREASING = 0;
+    //   static readonly INCREASING = 1;
+    //   static readonly STOPPED = 2;
+    // }
+    //
+    // However, real-time polling of the blinds causes severe degradation of
+    // responsiveness over time; we therefore use passive read requests, which
+    // only update the state after each movement is complete. This means that
+    // only the position ever changes; the PositionState is always STOPPED. For
+    // this reason, we don't bother reporting it.
   }
 
   /**
@@ -145,21 +154,23 @@ export class BlindAccessory {
    */
   async getCurrentPosition(): Promise<CharacteristicValue> {
     if (!this.currentState) {
-      this.platform.log.debug('Failed to get position: ', this.accessory.UUID);
+      this.platform.log.debug(
+          'Failed to get position: ', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
     // Note that the hub reports 0 as fully open and 100 as closed; Homekit
     // expects the opposite.
-    return (100 - this.currentState.data.currentPosition);
+    const currentPos = (100 - this.currentState.data.currentPosition);
+    this.platform.log.debug(
+        'Returning position: ', [this.accessory.displayName, currentPos]);
+    return currentPos;
   }
 
   async getPositionState(): Promise<CharacteristicValue> {
     if (!this.currentState) {
       this.platform.log.debug(
-          'Failed to get position state: ',
-          this.accessory.UUID,
-      );
+          'Failed to get position state: ', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }

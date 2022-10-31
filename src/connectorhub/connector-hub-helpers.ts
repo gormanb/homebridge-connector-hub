@@ -30,6 +30,21 @@ export function makeGetDeviceListRequest() {
   return {msgType: 'GetDeviceList', msgID: makeMsgId()};
 }
 
+// A ReadDevice request only updates the position after each movement of the
+// blinds is complete. In order to obtain the real-time state, we must issue a
+// WriteDevice request for a 'status' operation. However, polling with this
+// method causes the responsiveness of the blinds to degrade over time; there
+// may be some kind of rate-limiting mechanism in the hub. ReadDevice has no
+// such issues, possibly because it reads a cached value from the hub itself.
+export function makeReadDeviceRequest(deviceInfo) {
+  return {
+    msgType: 'ReadDevice',
+    mac: deviceInfo.mac,
+    deviceType: deviceInfo.deviceType,
+    msgID: makeMsgId(),
+  };
+}
+
 export function makeWriteDeviceRequest(
     deviceInfo: any, accessToken: string, command: object|string) {
   return {
@@ -40,11 +55,4 @@ export function makeWriteDeviceRequest(
     msgID: makeMsgId(),
     data: makeCommandData(command),
   };
-}
-
-// A ReadDevice request only updates its state after each movement of the blinds
-// is complete. In order to obtain the true state, we have to issue a
-// WriteDevice request with a 'status' request.
-export function makeReadDeviceRequest(deviceInfo: any, accessToken: string) {
-  return makeWriteDeviceRequest(deviceInfo, accessToken, 'status');
 }
