@@ -1,17 +1,17 @@
 /* eslint-disable indent */
-import {DgramAsPromised} from 'dgram-as-promised';
+import {DgramAsPromised, SocketAsPromised} from 'dgram-as-promised';
 import {Logger, PlatformConfig} from 'homebridge';
 
 import * as consts from './connector-hub-constants';
 import * as helpers from './connector-hub-helpers';
 
-const kSocketTimeout = 500;
-
-async function sendCommand(cmdObj: object, ip: string): Promise<any|undefined> {
-  // Create a new socket to service this request.
-  const socket = DgramAsPromised.createSocket('udp4');
-  setTimeout(socket.destroy, kSocketTimeout);
-
+async function sendCommand(
+    cmdObj: object, socket: SocketAsPromised|undefined, ip: string) {
+  // If no socket was supplied, create a single-use socket.
+  if (!socket) {
+    socket = DgramAsPromised.createSocket('udp4');
+    setTimeout(() => socket?.close(), 500);
+  }
   // Send the message...
   const sendMsg = Buffer.from(JSON.stringify(cmdObj));
   socket.send(sendMsg, consts.kSendPort, ip);
@@ -22,6 +22,7 @@ async function sendCommand(cmdObj: object, ip: string): Promise<any|undefined> {
 }
 
 export class ConnectorHubClient {
+  private socket: SocketAsPromised;
   private accessToken: string;
   private sendIp: string;
 
@@ -31,6 +32,7 @@ export class ConnectorHubClient {
       private readonly hubToken: string,
       private readonly log: Logger,
   ) {
+    this.socket = DgramAsPromised.createSocket('udp4');
     this.sendIp = (this.config.hubIp || consts.kMulticastIp);
     this.accessToken = helpers.computeAccessToken(
         {connectorKey: this.config.connectorKey, hubToken: this.hubToken});
@@ -38,12 +40,13 @@ export class ConnectorHubClient {
 
   public static getDeviceList(ip: string|undefined) {
     const sendIp = (ip || consts.kMulticastIp);
-    return sendCommand(helpers.makeGetDeviceListRequest(), sendIp);
+    return sendCommand(helpers.makeGetDeviceListRequest(), undefined, sendIp);
   }
 
   public getDeviceState() {
-    return sendCommand(
-        helpers.makeReadDeviceRequest(this.deviceInfo), this.sendIp);
+    const command =
+        helpers.makeReadDeviceRequest(this.deviceInfo, this.accessToken);
+    return sendCommand(command, this.socket, this.sendIp);
   }
 
   public setTargetPosition(position: number) {
@@ -54,10 +57,10 @@ export class ConnectorHubClient {
     return this.setDeviceState({targetAngle: angle});
   }
 
-  // 'command' is a string command or an object indicating command and value.
-  private setDeviceState(command: object) {
+  // 'command' is a string command or a ready-made command object.
+  private setDeviceState(command: object|string) {
     const request = helpers.makeWriteDeviceRequest(
         this.deviceInfo, this.accessToken, command);
-    return sendCommand(request, this.sendIp);
+    return sendCommand(request, this.socket, this.sendIp);
   }
 }

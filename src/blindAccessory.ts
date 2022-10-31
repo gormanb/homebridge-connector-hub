@@ -11,13 +11,14 @@ import {ConnectorHubPlatform} from './platform';
  * types.
  */
 export class BlindAccessory {
-  private blindService: Service;
-  // private batteryService: Service;
-
-  private static readonly kMinRefreshInterval = 2000;
-  private lastRefresh = (new Date(0)).getTime();
+  private static readonly kMinRefreshInterval = 5000;
 
   private client: ConnectorHubClient;
+  // private batteryService: Service;
+  private blindService: Service;
+
+  // Cached status, updated periodically.
+  private cachedStatus: any = undefined;
 
   constructor(
       private readonly platform: ConnectorHubPlatform,
@@ -50,46 +51,49 @@ export class BlindAccessory {
         this.platform.Characteristic.Name,
         accessory.context.device.displayName);
 
+    // Initialize the device state and set up a periodic refresh.
+    this.updateDeviceStatus();
+    setInterval(
+        () => this.updateDeviceStatus(), BlindAccessory.kMinRefreshInterval);
+
     // each service must implement at-minimum the "required characteristics" for
     // the given service type see
     // https://developers.homebridge.io/#/service/Lightbulb
-    /*
-        // register handlers for the CurrentPosition Characteristic
-        this.blindService
-            .getCharacteristic(this.platform.Characteristic.CurrentPosition)
-            .onGet(this.getCurrentPosition.bind(this));
 
-        // register handlers for the PositionState Characteristic
-        this.blindService
-            .getCharacteristic(this.platform.Characteristic.PositionState)
-            .onGet(this.getPositionState.bind(this));
-    */
+    // register handlers for the CurrentPosition Characteristic
+    this.blindService
+        .getCharacteristic(this.platform.Characteristic.CurrentPosition)
+        .onGet(this.getCurrentPosition.bind(this));
+
+    // register handlers for the PositionState Characteristic
+    this.blindService
+        .getCharacteristic(this.platform.Characteristic.PositionState)
+        .onGet(this.getPositionState.bind(this));
+
     // register handlers for the TargetPosition Characteristic
     this.blindService
         .getCharacteristic(this.platform.Characteristic.TargetPosition)
         .onSet(this.setTargetPosition.bind(this));
-
-    // Periodically refresh the status of the device.
-    setInterval(() => {
-      this.updateDeviceStatus();
-    }, BlindAccessory.kMinRefreshInterval);
   }
 
   async updateDeviceStatus() {
-    const response = await this.client.getDeviceState();
-    if (!response) {
+    // Update the cached copy of the device status from the hub.
+    this.cachedStatus = await this.client.getDeviceState();
+    if (!this.cachedStatus) {
+      this.platform.log.debug(`Failed to update ${this.accessory.displayName}`);
       return;
     }
     // Note that the hub reports 0 as fully open and 100 as closed;
     // Homekit expects the opposite.
     this.blindService.updateCharacteristic(
         this.platform.Characteristic.CurrentPosition,
-        100 - response.data.currentPosition);
+        100 - this.cachedStatus.data.currentPosition);
 
     // The 'operation' value mirrors the PositionState enum
     // 0 = decreasing, 1 = increasing, 2 = stopped
     this.blindService.updateCharacteristic(
-        this.platform.Characteristic.PositionState, response.data.operation);
+        this.platform.Characteristic.PositionState,
+        this.cachedStatus.data.operation);
   }
 
   /**
@@ -102,10 +106,10 @@ export class BlindAccessory {
     const adjustedTarget = (100 - <number>value);
     const ack = await this.client.setTargetPosition(adjustedTarget);
     if (!ack) {
+      this.platform.log.debug(`Failed to target ${this.accessory.UUID}`);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
-    this.platform.log.debug('Set Characteristic TargetPosition ->', value);
   }
 
   /**
@@ -125,15 +129,25 @@ export class BlindAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
   async getCurrentPosition(): Promise<CharacteristicValue> {
-    // implement your own code to check if the device is on
-    const isOn = true;
+    if (!this.cachedStatus) {
+      this.platform.log.debug(`Failed to get position: ${this.accessory.UUID}`);
+      throw new this.platform.api.hap.HapStatusError(
+          this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
+    // Note that the hub reports 0 as fully open and 100 as closed; Homekit
+    // expects the opposite.
+    return (100 - this.cachedStatus.data.currentPosition);
+  }
 
-    this.platform.log.debug('Get Characteristic On ->', isOn);
-
-    // if you need to return an error to show the device as "Not Responding" in
-    // the Home app: throw new
-    // this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
-
-    return isOn;
+  async getPositionState(): Promise<CharacteristicValue> {
+    if (!this.cachedStatus) {
+      this.platform.log.debug(
+          `Failed to get position state: ${this.accessory.UUID}`);
+      throw new this.platform.api.hap.HapStatusError(
+          this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
+    // The 'operation' value mirrors the PositionState enum
+    // 0 = decreasing, 1 = increasing, 2 = stopped
+    return this.cachedStatus.data.operation;
   }
 }

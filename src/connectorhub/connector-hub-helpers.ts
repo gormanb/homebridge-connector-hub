@@ -30,17 +30,8 @@ export function makeGetDeviceListRequest() {
   return {msgType: 'GetDeviceList', msgID: makeMsgId()};
 }
 
-export function makeReadDeviceRequest(deviceInfo) {
-  return {
-    msgType: 'ReadDevice',
-    mac: deviceInfo.mac,
-    deviceType: deviceInfo.deviceType,
-    msgID: makeMsgId(),
-  };
-}
-
 export function makeWriteDeviceRequest(
-    deviceInfo: any, accessToken: string, command: object) {
+    deviceInfo: any, accessToken: string, command: object|string) {
   return {
     msgType: 'WriteDevice',
     mac: deviceInfo.mac,
@@ -49,4 +40,11 @@ export function makeWriteDeviceRequest(
     msgID: makeMsgId(),
     data: makeCommandData(command),
   };
+}
+
+// A ReadDevice request only updates its state after each movement of the blinds
+// is complete. In order to obtain the true state, we have to issue a
+// WriteDevice request with a 'status' request.
+export function makeReadDeviceRequest(deviceInfo: any, accessToken: string) {
+  return makeWriteDeviceRequest(deviceInfo, accessToken, 'status');
 }
