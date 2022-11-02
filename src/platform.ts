@@ -70,8 +70,9 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       // from
       // something globally unique, but constant, for example, the device
       // serial number or MAC address
-      const device = Object.assign(
-          {displayName: `Blind ${devNum}`}, response.data[devNum]);
+      const device =
+          Object.assign({fwVersion: response.fwVersion}, response.data[devNum]);
+      const defaultDisplayName = `Connector Blind ${devNum}`;
       const uuid = this.api.hap.uuid.generate(device.mac);
 
       // see if an accessory with the same uuid has already been
@@ -104,11 +105,11 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
         // existingAccessory.displayName);
       } else {
         // the accessory does not yet exist, so we need to create it
-        this.log.info('Adding new accessory:', device.displayName);
+        this.log.info('Adding new accessory:', defaultDisplayName);
 
         // create a new accessory
         const accessory =
-            new this.api.platformAccessory(device.displayName, uuid);
+            new this.api.platformAccessory(defaultDisplayName, uuid);
 
         // store a copy of the device object in the `accessory.context`
         // the `context` property can be used to store any data about the

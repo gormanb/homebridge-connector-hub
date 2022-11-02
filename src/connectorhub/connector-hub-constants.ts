@@ -20,11 +20,11 @@ export const hubStats = [undefined, 'Working', 'Pairing', 'Updating'];
 
 // Device types. Can be either the hub itself or a connected device.
 export const deviceTypes = {
-  '10000000': '433Mhz radio motor',
+  '10000000': '433Mhz Radio Motor',
   '22000000': 'Wi-Fi Curtain',
   '02000001': 'Wi-Fi Bridge',
-  '22000002': 'Wi-Fi tubular motor',
-  '22000005': 'Wi-Fi receiver',
+  '22000002': 'Wi-Fi Tubular Motor',
+  '22000005': 'Wi-Fi Receiver',
 };
 
 // Recognised models of blinds that can be connected to the hub.
@@ -49,7 +49,7 @@ export const deviceModels = [
 export const wirelessModes = [
   'Uni-Directional',
   'Bi-Directional',
-  'Bi-Directional (mechanical limits)',
+  'Bi-Directional (with mechanical limits)',
   'Other',
 ];
 
@@ -62,5 +62,5 @@ export const stateModes = [
   'Top-limit',
   'Bottom-limit',
   'Limits detected',
-  '3rd -limit detected',
+  '3rd limit detected',
 ];

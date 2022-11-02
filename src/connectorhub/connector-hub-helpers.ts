@@ -4,7 +4,11 @@
 /* eslint-disable indent */
 import * as aesjs from 'aes-js';
 
-import {opCodes} from './connector-hub-constants';
+import * as consts from './connector-hub-constants';
+
+//
+// Helpers which facilitate communication with the hub.
+//
 
 export function computeAccessToken({connectorKey, hubToken}): string {
   const aesEcb =
@@ -21,7 +25,7 @@ export function makeMsgId() {
 // 'command' is a string mapping to an opCode or is already a command object.
 export function makeCommandData(command: string|object) {
   if (typeof command === 'string') {
-    return {operation: opCodes.indexOf(command)};
+    return {operation: consts.opCodes.indexOf(command)};
   }
   return command;
 }
@@ -55,4 +59,13 @@ export function makeWriteDeviceRequest(
     msgID: makeMsgId(),
     data: makeCommandData(command),
   };
+}
+
+//
+// Helpers which assist in interpreting the responses from the hub.
+//
+
+// Input is the "data.type" field from the ReadDeviceAck response.
+export function getDeviceModel(type: number): string {
+  return consts.deviceModels[type] || 'Generic Blind';
 }

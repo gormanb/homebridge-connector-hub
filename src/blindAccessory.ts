@@ -1,6 +1,7 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
+import * as helpers from './connectorhub/connector-hub-helpers';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
 
@@ -31,12 +32,8 @@ export class BlindAccessory {
         this.platform.config, this.accessory.context.device, this.hubToken,
         this.platform.log);
 
-    // set accessory information
-    this.accessory.getService(this.platform.Service.AccessoryInformation)!
-        .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Dooya');
-    // .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
-    // .setCharacteristic(
-    //     this.platform.Characteristic.SerialNumber, accessory.UUID);
+    // Set the accessory information to be displayed in Homekit.
+    this.setAccessoryInformation();
 
     // get the service if it exists, otherwise create a new service. you can
     // create multiple services for each accessory.
@@ -49,8 +46,7 @@ export class BlindAccessory {
     // the Home app in this example we are using the name we stored in the
     // `accessory.context` in the `discoverDevices` method.
     this.blindService.setCharacteristic(
-        this.platform.Characteristic.Name,
-        accessory.context.device.displayName);
+        this.platform.Characteristic.Name, accessory.displayName);
 
     // Initialize the device state and set up a periodic refresh.
     this.updateDeviceStatus();
@@ -72,6 +68,19 @@ export class BlindAccessory {
         .onSet(this.setTargetPosition.bind(this));
   }
 
+  // Update the device information displayed in Homekit.
+  setAccessoryInformation(modelNum = 0, manufacturer = 'Dooya') {
+    const Characteristic = this.platform.Characteristic;
+    const deviceInfo = this.accessory.context.device;
+    this.accessory.getService(this.platform.Service.AccessoryInformation)!
+        .setCharacteristic(Characteristic.Manufacturer, manufacturer)
+        .setCharacteristic(Characteristic.SerialNumber, deviceInfo.mac)
+        .setCharacteristic(
+            Characteristic.FirmwareRevision, deviceInfo.fwVersion)
+        .setCharacteristic(
+            Characteristic.Model, helpers.getDeviceModel(modelNum));
+  }
+
   async updateDeviceStatus() {
     // Obtain the latest status from the device.
     const newState = await this.client.getDeviceState();
@@ -84,6 +93,11 @@ export class BlindAccessory {
     if (!newState) {
       this.platform.log.debug('Failed to update ', this.accessory.displayName);
       return;
+    }
+
+    // If this is the first time we've read the device, update the model type.
+    if (!this.lastState) {
+      this.setAccessoryInformation(newState.data.type);
     }
 
     // Note that the hub reports 0 as fully open and 100 as closed; Homekit
