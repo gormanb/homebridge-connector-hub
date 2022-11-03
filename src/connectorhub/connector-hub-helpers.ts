@@ -69,3 +69,11 @@ export function makeWriteDeviceRequest(
 export function getDeviceModel(type: number): string {
   return consts.deviceModels[type] || 'Generic Blind';
 }
+
+export function getBatteryPercent(batteryLevel: number): number {
+  return Math.round(100 * (batteryLevel / consts.kMaxBatteryLevel));
+}
+
+export function isLowBattery(batteryLevel: number): boolean {
+  return getBatteryPercent(batteryLevel) <= consts.kLowBatteryPercent;
+}

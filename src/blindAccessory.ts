@@ -15,7 +15,7 @@ export class BlindAccessory {
   private static readonly kRefreshInterval = 5000;
 
   private client: ConnectorHubClient;
-  // private batteryService: Service;
+  private batteryService: Service;
   private blindService: Service;
 
   // Cached status, updated periodically.
@@ -37,16 +37,22 @@ export class BlindAccessory {
 
     // get the service if it exists, otherwise create a new service. you can
     // create multiple services for each accessory.
-    // TODO: add a service for the battery here.
     this.blindService =
         this.accessory.getService(this.platform.Service.WindowCovering) ||
         this.accessory.addService(this.platform.Service.WindowCovering);
+
+    // Add a service to report the battery level.
+    this.batteryService =
+        this.accessory.getService(this.platform.Service.Battery) ||
+        this.accessory.addService(this.platform.Service.Battery);
 
     // set the service name, this is what is displayed as the default name on
     // the Home app in this example we are using the name we stored in the
     // `accessory.context` in the `discoverDevices` method.
     this.blindService.setCharacteristic(
         this.platform.Characteristic.Name, accessory.displayName);
+    this.batteryService.setCharacteristic(
+        this.platform.Characteristic.Name, `${accessory.displayName} Battery`);
 
     // Initialize the device state and set up a periodic refresh.
     this.updateDeviceStatus();
@@ -114,6 +120,24 @@ export class BlindAccessory {
           this.platform.Characteristic.TargetPosition, newPos);
       this.blindService.updateCharacteristic(
           this.platform.Characteristic.CurrentPosition, newPos);
+    }
+
+    // Update the battery level if it has changed since the last refresh.
+    const lastBattery = (this.lastState && this.lastState.data.batteryLevel);
+    if (newState.data.batteryLevel !== lastBattery) {
+      const batteryPercent =
+          helpers.getBatteryPercent(newState.data.batteryLevel);
+      this.platform.log.debug(
+          'Updating battery ', [this.accessory.displayName, batteryPercent]);
+      // Push the new battery percentage level to Homekit.
+      this.batteryService.updateCharacteristic(
+          this.platform.Characteristic.BatteryLevel, batteryPercent);
+      this.batteryService.updateCharacteristic(
+          this.platform.Characteristic.StatusLowBattery,
+          helpers.isLowBattery(newState.data.batteryLevel));
+      this.batteryService.updateCharacteristic(
+          this.platform.Characteristic.ChargingState,
+          newState.data.chargingState);
     }
 
     // The 'data.operation' value mirrors the Characteristic.PositionState enum:

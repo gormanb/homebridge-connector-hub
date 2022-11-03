@@ -1,8 +1,12 @@
 /*
- * Constants defined by the Connector hub protocol.
+ * Constants defined by the Connector hub protocol and by this plugin.
  */
 export const kMulticastIp = '238.0.0.18';
 export const kSendPort = 32100;
+
+// Battery level constants.
+export const kLowBatteryPercent = 10;
+export const kMaxBatteryLevel = 1200;
 
 // Discrete states that the blinds can be in.
 export enum BlindPositionState {
