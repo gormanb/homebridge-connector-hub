@@ -5,21 +5,28 @@ import {Logger, PlatformConfig} from 'homebridge';
 import * as consts from './connector-hub-constants';
 import * as helpers from './connector-hub-helpers';
 
-const kSocketTimeoutMs = 500;
+const kSocketTimeoutMs = 250;
+const kMaxRetries = 3;
 
 async function sendCommand(cmdObj: object, ip: string) {
-  // Create a socket to service this request.
-  const socket = DgramAsPromised.createSocket('udp4');
+  // A promise that holds the ack response from the hub.
+  let response;
 
-  // Convert the command to a byte buffer of the string representation.
-  const sendMsg = Buffer.from(JSON.stringify(cmdObj));
+  // Retry up to kMaxRetries times to overcome any transient network issues.
+  for (let attempt = 0; attempt < kMaxRetries && !response; ++attempt) {
+    // Create a socket to service this request.
+    const socket = DgramAsPromised.createSocket('udp4');
 
-  // Set a maximum timeout for the request.
-  setTimeout(() => socket.close(), kSocketTimeoutMs);
+    // Convert the command to a byte buffer of the string representation.
+    const sendMsg = Buffer.from(JSON.stringify(cmdObj));
 
-  // Send the message and wait for a response from the hub.
-  const sendResult = socket.send(sendMsg, consts.kSendPort, ip);
-  const response = await sendResult && await socket.recv();
+    // Set a maximum timeout for the request.
+    setTimeout(() => socket.close(), kSocketTimeoutMs);
+
+    // Send the message and wait for a response from the hub.
+    const sendResult = socket.send(sendMsg, consts.kSendPort, ip);
+    response = await sendResult && await socket.recv();
+  }
 
   // Return a parsed response, if the operation was successful.
   return (response ? JSON.parse(response.msg.toString()) : undefined);
