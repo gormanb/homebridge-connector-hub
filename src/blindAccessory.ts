@@ -172,7 +172,7 @@ export class BlindAccessory {
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
     this.platform.log.debug(
-        'Targeted: ', this.accessory.displayName, adjustedTarget);
+        'Targeted: ', [this.accessory.displayName, adjustedTarget]);
   }
 
   /**
