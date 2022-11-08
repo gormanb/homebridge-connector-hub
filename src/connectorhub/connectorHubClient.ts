@@ -8,6 +8,15 @@ import * as helpers from './connector-hub-helpers';
 const kSocketTimeoutMs = 250;
 const kMaxRetries = 3;
 
+// Function to safely parse possibly-invalid JSON.
+function tryParse(input: string) {
+  try {
+    return JSON.parse(input);
+  } catch (err) {
+    return undefined;
+  }
+}
+
 async function sendCommand(cmdObj: object, ip: string) {
   // A promise that holds the ack response from the hub.
   let response;
@@ -29,7 +38,7 @@ async function sendCommand(cmdObj: object, ip: string) {
   }
 
   // Return a parsed response, if the operation was successful.
-  return (response ? JSON.parse(response.msg.toString()) : undefined);
+  return (response ? tryParse(response.msg.toString()) : undefined);
 }
 
 export class ConnectorHubClient {
