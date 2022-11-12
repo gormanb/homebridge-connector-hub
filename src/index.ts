@@ -1,11 +1,9 @@
-import { API } from 'homebridge';
+import {API} from 'homebridge';
 
-import { PLATFORM_NAME } from './settings';
-import { ConnectorHubPlatform } from './platform';
+import {ConnectorHubPlatform} from './platform';
+import {PLATFORM_NAME} from './settings';
 
-/**
- * This method registers the platform with Homebridge
- */
+// Registers the platform with Homebridge.
 export = (api: API) => {
   api.registerPlatform(PLATFORM_NAME, ConnectorHubPlatform);
 };

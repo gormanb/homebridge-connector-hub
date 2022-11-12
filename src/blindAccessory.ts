@@ -6,10 +6,8 @@ import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
 
 /**
- * Platform Accessory
- * An instance of this class is created for each accessory your platform
- * registers Each accessory may expose multiple services of different service
- * types.
+ * An instance of this class is created for each accessory. Exposes both the
+ * WindowCovering and Battery services for the blind.
  */
 export class BlindAccessory {
   private static readonly kRefreshInterval = 5000;
@@ -18,7 +16,7 @@ export class BlindAccessory {
   private batteryService: Service;
   private blindService: Service;
 
-  // Cached status, updated periodically.
+  // Cached device status, updated periodically.
   private currentState: any = undefined;
   private lastState: any = undefined;
 
@@ -35,8 +33,7 @@ export class BlindAccessory {
     // Set the accessory information to be displayed in Homekit.
     this.setAccessoryInformation();
 
-    // get the service if it exists, otherwise create a new service. you can
-    // create multiple services for each accessory.
+    // Get the WindowCovering service if it exists, otherwise create one.
     this.blindService =
         this.accessory.getService(this.platform.Service.WindowCovering) ||
         this.accessory.addService(this.platform.Service.WindowCovering);
@@ -46,9 +43,7 @@ export class BlindAccessory {
         this.accessory.getService(this.platform.Service.Battery) ||
         this.accessory.addService(this.platform.Service.Battery);
 
-    // set the service name, this is what is displayed as the default name on
-    // the Home app in this example we are using the name we stored in the
-    // `accessory.context` in the `discoverDevices` method.
+    // Set the service name. This is the default name displayed by Homekit.
     this.blindService.setCharacteristic(
         this.platform.Characteristic.Name, accessory.displayName);
     this.batteryService.setCharacteristic(
@@ -59,16 +54,12 @@ export class BlindAccessory {
     setInterval(
         () => this.updateDeviceStatus(), BlindAccessory.kRefreshInterval);
 
-    // each service must implement at-minimum the "required characteristics" for
-    // the given service type see
-    // https://developers.homebridge.io/#/service/Lightbulb
-
-    // register handlers for the CurrentPosition Characteristic
+    // Register handlers for the CurrentPosition Characteristic.
     this.blindService
         .getCharacteristic(this.platform.Characteristic.CurrentPosition)
         .onGet(this.getCurrentPosition.bind(this));
 
-    // register handlers for the TargetPosition Characteristic
+    // Register handlers for the TargetPosition Characteristic
     this.blindService
         .getCharacteristic(this.platform.Characteristic.TargetPosition)
         .onSet(this.setTargetPosition.bind(this));
@@ -87,6 +78,12 @@ export class BlindAccessory {
             Characteristic.Model, helpers.getDeviceModel(modelNum));
   }
 
+  /**
+   * This function is the main driver of the plugin. It periodically reads the
+   * current device state from the hub and, if relevant values have changed,
+   * pushes the new state to Homekit. This approach is taken because pulling the
+   * status from the hub whenever Homekit requests it is too slow.
+   */
   async updateDeviceStatus() {
     // Obtain the latest status from the device.
     const newState = await this.client.getDeviceState();
@@ -158,9 +155,9 @@ export class BlindAccessory {
   }
 
   /**
-   * Handle "SET" requests from HomeKit
-   * These are sent when the user changes the state of an accessory, for
-   * example, turning on a Light bulb.
+   * Handle "set TargetPosition" requests from HomeKit. These are sent when the
+   * user changes the state of the blind. Throws SERVICE_COMMUNICATION_FAILURE
+   * if the hub cannot be contacted.
    */
   async setTargetPosition(value: CharacteristicValue) {
     // Homekit positions are the inverse of what the hub expects.
@@ -176,20 +173,9 @@ export class BlindAccessory {
   }
 
   /**
-   * Handle the "GET" requests from HomeKit
-   * These are sent when HomeKit wants to know the current state of the
-   accessory, for example, checking if a Light bulb is on.
-   *
-   * GET requests should return as fast as possbile. A long delay here will
-   result in
-   * HomeKit being unresponsive and a bad user experience in general.
-   *
-   * If your device takes time to respond you should update the status of your
-   device
-   * asynchronously instead using the `updateCharacteristic` method instead.
-
-   * @example
-   * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
+   * Handle "get CurrentPosition" requests from HomeKit. Returns the most recent
+   * value cached by the periodic updater; throws SERVICE_COMMUNICATION_FAILURE
+   * if the most recent attempt to contact the hub failed.
    */
   async getCurrentPosition(): Promise<CharacteristicValue> {
     if (!this.currentState) {

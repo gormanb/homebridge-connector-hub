@@ -1,6 +1,8 @@
 /*
- * Generic helper functions for the ConnectorHubClient.
+ * Various helper functions for the plugin, to facilitate communication with the
+ * hub and to aid in interpreting its responses.
  */
+
 /* eslint-disable indent */
 import * as aesjs from 'aes-js';
 
