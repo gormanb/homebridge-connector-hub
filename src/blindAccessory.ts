@@ -94,7 +94,7 @@ export class BlindAccessory {
 
     // If we didn't hear back from the device, exit early.
     if (!newState) {
-      this.platform.log.debug('Failed to update ', this.accessory.displayName);
+      this.platform.log.warn('Failed to update', this.accessory.displayName);
       return;
     }
 
@@ -109,7 +109,7 @@ export class BlindAccessory {
     const lastPos = (this.lastState && this.lastState.data.currentPosition);
     if (newState.data.currentPosition !== lastPos) {
       const newPos = (100 - newState.data.currentPosition);
-      this.platform.log.debug(
+      this.platform.log.info(
           'Updating position ', [this.accessory.displayName, newPos]);
       // Update the TargetPosition, since we've just reached it, and the actual
       // CurrentPosition. Syncs Homekit if blinds are moved by another app.
@@ -124,7 +124,7 @@ export class BlindAccessory {
     if (newState.data.batteryLevel !== lastBattery) {
       const batteryPercent =
           helpers.getBatteryPercent(newState.data.batteryLevel);
-      this.platform.log.debug(
+      this.platform.log.info(
           'Updating battery ', [this.accessory.displayName, batteryPercent]);
       // Push the new battery percentage level to Homekit.
       this.batteryService.updateCharacteristic(
@@ -164,11 +164,11 @@ export class BlindAccessory {
     const adjustedTarget = (100 - <number>value);
     const ack = await this.client.setTargetPosition(adjustedTarget);
     if (!ack) {
-      this.platform.log.debug('Failed to target', this.accessory.displayName);
+      this.platform.log.error('Failed to target', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
-    this.platform.log.debug(
+    this.platform.log.info(
         'Targeted: ', [this.accessory.displayName, adjustedTarget]);
   }
 
@@ -179,7 +179,7 @@ export class BlindAccessory {
    */
   async getCurrentPosition(): Promise<CharacteristicValue> {
     if (!this.currentState) {
-      this.platform.log.debug(
+      this.platform.log.error(
           'Failed to get position: ', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -187,7 +187,7 @@ export class BlindAccessory {
     // Note that the hub reports 0 as fully open and 100 as closed; Homekit
     // expects the opposite.
     const currentPos = (100 - this.currentState.data.currentPosition);
-    this.platform.log.debug(
+    this.platform.log.info(
         'Returning position: ', [this.accessory.displayName, currentPos]);
     return currentPos;
   }
