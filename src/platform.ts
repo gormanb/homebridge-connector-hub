@@ -2,8 +2,12 @@
 import {API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service} from 'homebridge';
 
 import {BlindAccessory} from './blindAccessory';
+import {GetDeviceListAck} from './connectorhub/connector-hub-api';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
+
+// Response type we expect from device discovery. Undefined if no response.
+type DeviceListResponse = GetDeviceListAck|undefined;
 
 // How long we wait after a failed discovery attempt before retrying.
 const kDiscoveryRefreshInterval = 5000;
@@ -58,7 +62,9 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   async discoverDevices() {
     // Discover accessories from the local network. If we fail to discover
     // anything, schedule another discovery attempt in the future.
-    const response = await ConnectorHubClient.getDeviceList(this.config.hubIp);
+    const response = <DeviceListResponse>(
+        await ConnectorHubClient.getDeviceList(this.config.hubIp));
+
     if (!response) {
       this.log.info(
           'Failed to contact hub. Retry in', kDiscoveryRefreshInterval, 'ms');

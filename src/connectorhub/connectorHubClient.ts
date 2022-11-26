@@ -2,6 +2,7 @@
 import {DgramAsPromised} from 'dgram-as-promised';
 import {Logger, PlatformConfig} from 'homebridge';
 
+import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
 import * as helpers from './connector-hub-helpers';
 
@@ -17,7 +18,14 @@ function tryParse(input: string) {
   }
 }
 
-async function sendCommand(cmdObj: object, ip: string) {
+// Types we expect for connector hub requests and responses.
+type DeviceRequest =
+    hubapi.GetDeviceListReq|hubapi.WriteDeviceReq|hubapi.ReadDeviceReq;
+type DeviceResponse =
+    hubapi.GetDeviceListAck|hubapi.WriteDeviceAck|hubapi.ReadDeviceAck;
+
+async function sendCommand(
+    cmdObj: DeviceRequest, ip: string): Promise<DeviceResponse> {
   // A promise that holds the ack response from the hub.
   let response;
 
@@ -47,7 +55,7 @@ export class ConnectorHubClient {
 
   constructor(
       private readonly config: PlatformConfig,
-      private readonly deviceInfo: object,
+      private readonly deviceInfo: hubapi.DeviceInfo,
       private readonly hubToken: string,
       private readonly log: Logger,
   ) {
@@ -56,26 +64,26 @@ export class ConnectorHubClient {
         {connectorKey: this.config.connectorKey, hubToken: this.hubToken});
   }
 
-  public static getDeviceList(ip?: string) {
+  public static getDeviceList(ip?: string): Promise<DeviceResponse> {
     const sendIp = (ip || consts.kMulticastIp);
     return sendCommand(helpers.makeGetDeviceListRequest(), sendIp);
   }
 
-  public getDeviceState() {
+  public getDeviceState(): Promise<DeviceResponse> {
     const command = helpers.makeReadDeviceRequest(this.deviceInfo);
     return sendCommand(command, this.sendIp);
   }
 
-  public setTargetPosition(position: number) {
+  public setTargetPosition(position: number): Promise<DeviceResponse> {
     return this.setDeviceState({targetPosition: position});
   }
 
-  public setTargetAngle(angle: number) {
+  public setTargetAngle(angle: number): Promise<DeviceResponse> {
     return this.setDeviceState({targetAngle: angle});
   }
 
   // 'command' is a string command or a ready-made command object.
-  private setDeviceState(command: object|string) {
+  private setDeviceState(command: hubapi.DeviceCmd): Promise<DeviceResponse> {
     const request = helpers.makeWriteDeviceRequest(
         this.deviceInfo, this.accessToken, command);
     return sendCommand(request, this.sendIp);

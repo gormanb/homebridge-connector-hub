@@ -1,9 +1,13 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
+import {ReadDeviceAck} from './connectorhub/connector-hub-api';
 import * as helpers from './connectorhub/connector-hub-helpers';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
+
+// Response type we expect for device status. Undefined if no response.
+type ReadDeviceResponse = ReadDeviceAck|undefined;
 
 /**
  * An instance of this class is created for each accessory. Exposes both the
@@ -17,8 +21,8 @@ export class BlindAccessory {
   private blindService: Service;
 
   // Cached device status, updated periodically.
-  private currentState: any = undefined;
-  private lastState: any = undefined;
+  private currentState: ReadDeviceResponse;
+  private lastState: ReadDeviceResponse;
 
   constructor(
       private readonly platform: ConnectorHubPlatform,
@@ -86,7 +90,7 @@ export class BlindAccessory {
    */
   async updateDeviceStatus() {
     // Obtain the latest status from the device.
-    const newState = await this.client.getDeviceState();
+    const newState = <ReadDeviceResponse>(await this.client.getDeviceState());
 
     // Update the cached current and last-good copies of the device status.
     this.lastState = (this.currentState || this.lastState);

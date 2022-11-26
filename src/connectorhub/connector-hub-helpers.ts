@@ -6,6 +6,7 @@
 /* eslint-disable indent */
 import * as aesjs from 'aes-js';
 
+import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
 
 //
@@ -19,20 +20,12 @@ export function computeAccessToken({connectorKey, hubToken}): string {
   return aesjs.utils.hex.fromBytes(tokenEnc).toUpperCase();
 }
 
-export function makeMsgId() {
+export function makeMsgId(): string {
   // The ID is the current timestamp with all non-numeric chars removed.
   return (new Date()).toJSON().replaceAll(/\D/g, '');
 }
 
-// 'command' is a string mapping to an opCode or is already a command object.
-export function makeCommandData(command: string|object) {
-  if (typeof command === 'string') {
-    return {operation: consts.opCodes.indexOf(command)};
-  }
-  return command;
-}
-
-export function makeGetDeviceListRequest() {
+export function makeGetDeviceListRequest(): hubapi.GetDeviceListReq {
   return {msgType: 'GetDeviceList', msgID: makeMsgId()};
 }
 
@@ -42,7 +35,8 @@ export function makeGetDeviceListRequest() {
 // method causes the responsiveness of the blinds to degrade over time; there
 // may be some kind of rate-limiting mechanism in the hub. ReadDevice has no
 // such issues, possibly because it reads a cached value from the hub itself.
-export function makeReadDeviceRequest(deviceInfo) {
+export function makeReadDeviceRequest(deviceInfo: hubapi.DeviceInfo):
+    hubapi.ReadDeviceReq {
   return {
     msgType: 'ReadDevice',
     mac: deviceInfo.mac,
@@ -52,14 +46,15 @@ export function makeReadDeviceRequest(deviceInfo) {
 }
 
 export function makeWriteDeviceRequest(
-    deviceInfo: any, accessToken: string, command: object|string) {
+    deviceInfo: hubapi.DeviceInfo, accessToken: string,
+    command: hubapi.DeviceCmd): hubapi.WriteDeviceReq {
   return {
     msgType: 'WriteDevice',
     mac: deviceInfo.mac,
     deviceType: deviceInfo.deviceType,
     accessToken: accessToken,
     msgID: makeMsgId(),
-    data: makeCommandData(command),
+    data: command,
   };
 }
 

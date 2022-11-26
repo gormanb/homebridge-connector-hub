@@ -65,7 +65,7 @@ enum WirelessMode {
   kOther = 3
 }
 
-interface DeviceInfo {
+export interface DeviceInfo {
   mac: string;
   deviceType: DeviceType;
 }
@@ -89,7 +89,7 @@ interface HeartbeatData {
   RSSI: number;
 }
 
-interface DeviceCmd {
+export interface DeviceCmd {
   operation?: DeviceOpCode;
   targetPosition?: number;
   targetAngle?: number;
@@ -99,12 +99,12 @@ interface DeviceCmd {
 // Messages sent to and received from the hub begin here.
 //
 
-interface GetDeviceListReq {
+export interface GetDeviceListReq {
   msgType: 'GetDeviceList';
   msgID: string;
 }
 
-interface GetDeviceListAck {
+export interface GetDeviceListAck {
   msgType: 'GetDeviceListAck';
   mac: string;
   deviceType: DeviceType;
@@ -114,7 +114,7 @@ interface GetDeviceListAck {
   data: DeviceInfo[];
 }
 
-interface WriteDeviceReq {
+export interface WriteDeviceReq {
   msgType: 'WriteDevice';
   mac: string;
   deviceType: DeviceType;
@@ -123,21 +123,21 @@ interface WriteDeviceReq {
   data: DeviceCmd;
 }
 
-interface WriteDeviceAck {
+export interface WriteDeviceAck {
   msgType: 'WriteDeviceAck';
   mac: string;
   deviceType: DeviceType;
   data: DeviceStatus;
 }
 
-interface ReadDeviceReq {
+export interface ReadDeviceReq {
   msgType: 'ReadDevice';
   mac: string;
   deviceType: DeviceType;
   msgID: string;
 }
 
-interface ReadDeviceAck {
+export interface ReadDeviceAck {
   msgType: 'ReadDeviceAck';
   mac: string;
   deviceType: DeviceType;
