@@ -82,7 +82,6 @@ export class ConnectorHubClient {
     return this.setDeviceState({targetAngle: angle});
   }
 
-  // 'command' is a string command or a ready-made command object.
   private setDeviceState(command: hubapi.DeviceCmd): Promise<DeviceResponse> {
     const request = helpers.makeWriteDeviceRequest(
         this.deviceInfo, this.accessToken, command);
