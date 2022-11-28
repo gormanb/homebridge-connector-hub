@@ -1,7 +1,7 @@
 {
   "displayName": "Homebridge Connector Hub",
   "name": "homebridge-connector-hub",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Homebridge plugin to expose Connector+ compatible window blinds to Homekit",
   "license": "Apache-2.0",
   "repository": {
@@ -23,7 +23,24 @@
     "prepublishOnly": "npm run lint && npm run build"
   },
   "keywords": [
-    "homebridge-plugin"
+    "homebridge-plugin",
+    "dooya",
+    "ningbo",
+    "dd7002B",
+    "dd1554",
+    "1554A00",
+    "blind",
+    "shade",
+    "curtain",
+    "awning",
+    "window",
+    "covering",
+    "homekit",
+    "connector",
+    "connector+",
+    "connector plus",
+    "motor",
+    "talks"
   ],
   "dependencies": {},
   "devDependencies": {
