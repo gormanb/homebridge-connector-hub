@@ -138,7 +138,8 @@ export class BlindAccessory {
           helpers.isLowBattery(newState.data.batteryLevel));
       this.batteryService.updateCharacteristic(
           this.platform.Characteristic.ChargingState,
-          newState.data.chargingState);
+          newState.data.chargingState ||
+              this.platform.Characteristic.ChargingState.NOT_CHARGING);
     }
 
     // The 'data.operation' value mirrors the Characteristic.PositionState enum:

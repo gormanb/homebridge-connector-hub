@@ -67,8 +67,35 @@ export function getDeviceModel(type: number): string {
   return consts.deviceModels[type] || 'Generic Blind';
 }
 
+// Estimate battery charge percentage from reported voltage.
+// Calculation uses thresholds defined by the Connector app.
 export function getBatteryPercent(batteryLevel: number): number {
-  return Math.round(100 * (batteryLevel / consts.kMaxBatteryLevel));
+  const voltageLevel = batteryLevel / 100.0;
+  if (voltageLevel >= 15.9 || (voltageLevel >= 11.9 && voltageLevel < 13.2) ||
+      (voltageLevel >= 7.9 && voltageLevel < 8.8)) {
+    return 100;
+  }
+  if ((voltageLevel >= 14.5 && voltageLevel < 15.9) ||
+      (voltageLevel >= 10.9 && voltageLevel < 11.9) ||
+      (voltageLevel >= 7.3 && voltageLevel < 7.9)) {
+    return 50;
+  }
+  if ((voltageLevel >= 14.2 && voltageLevel < 14.5) ||
+      (voltageLevel >= 10.6 && voltageLevel < 10.9) ||
+      (voltageLevel >= 7.1 && voltageLevel < 7.3)) {
+    return 20;
+  }
+  if ((voltageLevel >= 14.0 && voltageLevel < 14.2) ||
+      (voltageLevel >= 10.5 && voltageLevel < 10.6) ||
+      (voltageLevel >= 7.0 && voltageLevel < 7.1)) {
+    return 10;
+  }
+  if ((voltageLevel >= 13.2 && voltageLevel < 14.0) ||
+      (voltageLevel >= 8.8 && voltageLevel < 10.5) ||
+      (voltageLevel >= 6.8 && voltageLevel < 7.0)) {
+    return 0;
+  }
+  return 100;
 }
 
 export function isLowBattery(batteryLevel: number): boolean {

@@ -5,8 +5,7 @@ export const kMulticastIp = '238.0.0.18';
 export const kSendPort = 32100;
 
 // Battery level constants.
-export const kLowBatteryPercent = 10;
-export const kMaxBatteryLevel = 1200;
+export const kLowBatteryPercent = 15;
 
 // Discrete states that the blinds can be in.
 export enum BlindPositionState {
