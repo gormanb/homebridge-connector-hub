@@ -5,6 +5,7 @@ import {BlindAccessory} from './blindAccessory';
 import {GetDeviceListAck} from './connectorhub/connector-hub-api';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
+import {Log} from './util/log';
 
 // Response type we expect from device discovery. Undefined if no response.
 type DeviceListResponse = GetDeviceListAck|undefined;
@@ -28,18 +29,22 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   public readonly accessoryHandlers: BlindAccessory[] = [];
 
   constructor(
-      public readonly log: Logger,
+      private readonly logger: Logger,
       public readonly config: PlatformConfig,
       public readonly api: API,
   ) {
-    this.log.debug('Finished initializing platform:', this.config.name);
+    // Configure the custom log with the Homebridge logger and debug config.
+    Log.configure(logger, config.enableDebug);
+
+    // Notify the user that we have completed platform initialization.
+    Log.debug('Finished initializing platform');
 
     // When this event is fired it means Homebridge has restored all cached
     // accessories from disk. We only register new accessories after this event
-    // was fired, in order to ensure they weren't added to homebridge already.
+    // is fired, in order to ensure they weren't added to homebridge already.
     // This event can also be used to start discovery of new accessories.
     this.api.on('didFinishLaunching', () => {
-      log.debug('Executed didFinishLaunching callback');
+      Log.debug('Finished restoring all cached accessories from disk');
       this.discoverDevices();
     });
   }
@@ -50,7 +55,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
    * will be examined later during the 'discoverDevices' phase.
    */
   configureAccessory(accessory: PlatformAccessory) {
-    this.log.info('Loading accessory from cache:', accessory.displayName);
+    Log.info('Loading accessory from cache:', accessory.displayName);
     this.cachedAccessories.push(accessory);
   }
 
@@ -66,7 +71,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
         await ConnectorHubClient.getDeviceList(this.config.hubIp));
 
     if (!response) {
-      this.log.info(
+      Log.info(
           'Failed to contact hub. Retry in', kDiscoveryRefreshInterval, 'ms');
       setTimeout(() => this.discoverDevices(), kDiscoveryRefreshInterval);
       return response;
@@ -86,7 +91,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
 
       // If the accessory does not yet exist, we need to create it.
       if (!accessory) {
-        this.log.info('Adding new accessory:', defaultDisplayName);
+        Log.info('Adding new accessory:', defaultDisplayName);
         accessory = new this.api.platformAccessory(defaultDisplayName, uuid);
         this.api.registerPlatformAccessories(
             PLUGIN_NAME, PLATFORM_NAME, [accessory]);
@@ -109,7 +114,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     // stale and no longer exist on the hub. Remove them from Homekit.
     let removedAccessory: PlatformAccessory|undefined;
     while ((removedAccessory = this.cachedAccessories.pop())) {
-      this.log.info('Removing stale accessory:', removedAccessory.displayName);
+      Log.info('Removing stale accessory:', removedAccessory.displayName);
       this.api.unregisterPlatformAccessories(
           PLUGIN_NAME, PLATFORM_NAME, [removedAccessory]);
     }

@@ -5,6 +5,7 @@ import {ReadDeviceAck} from './connectorhub/connector-hub-api';
 import * as helpers from './connectorhub/connector-hub-helpers';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
+import {Log} from './util/log';
 
 // Response type we expect for device status. Undefined if no response.
 type ReadDeviceResponse = ReadDeviceAck|undefined;
@@ -31,8 +32,7 @@ export class BlindAccessory {
   ) {
     // Create a new client connection for this device.
     this.client = new ConnectorHubClient(
-        this.platform.config, this.accessory.context.device, this.hubToken,
-        this.platform.log);
+        this.platform.config, this.accessory.context.device, this.hubToken);
 
     // Set the accessory information to be displayed in Homekit.
     this.setAccessoryInformation();
@@ -98,7 +98,7 @@ export class BlindAccessory {
 
     // If we didn't hear back from the device, exit early.
     if (!newState) {
-      this.platform.log.warn('Failed to update', this.accessory.displayName);
+      Log.warn('Failed to update', this.accessory.displayName);
       return;
     }
 
@@ -113,8 +113,7 @@ export class BlindAccessory {
     const lastPos = (this.lastState && this.lastState.data.currentPosition);
     if (newState.data.currentPosition !== lastPos) {
       const newPos = (100 - newState.data.currentPosition);
-      this.platform.log.info(
-          'Updating position ', [this.accessory.displayName, newPos]);
+      Log.info('Updating position ', [this.accessory.displayName, newPos]);
       // Update the TargetPosition, since we've just reached it, and the actual
       // CurrentPosition. Syncs Homekit if blinds are moved by another app.
       this.blindService.updateCharacteristic(
@@ -128,7 +127,7 @@ export class BlindAccessory {
     if (newState.data.batteryLevel !== lastBattery) {
       const batteryPercent =
           helpers.getBatteryPercent(newState.data.batteryLevel);
-      this.platform.log.info(
+      Log.info(
           'Updating battery ', [this.accessory.displayName, batteryPercent]);
       // Push the new battery percentage level to Homekit.
       this.batteryService.updateCharacteristic(
@@ -164,17 +163,16 @@ export class BlindAccessory {
    * user changes the state of the blind. Throws SERVICE_COMMUNICATION_FAILURE
    * if the hub cannot be contacted.
    */
-  async setTargetPosition(value: CharacteristicValue) {
+  async setTargetPosition(targetValue: CharacteristicValue) {
     // Homekit positions are the inverse of what the hub expects.
-    const adjustedTarget = (100 - <number>value);
+    const adjustedTarget = (100 - <number>targetValue);
     const ack = await this.client.setTargetPosition(adjustedTarget);
     if (!ack) {
-      this.platform.log.error('Failed to target', this.accessory.displayName);
+      Log.error('Failed to target', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
-    this.platform.log.info(
-        'Targeted: ', [this.accessory.displayName, adjustedTarget]);
+    Log.info('Targeted: ', [this.accessory.displayName, targetValue]);
   }
 
   /**
@@ -184,16 +182,14 @@ export class BlindAccessory {
    */
   async getCurrentPosition(): Promise<CharacteristicValue> {
     if (!this.currentState) {
-      this.platform.log.error(
-          'Failed to get position: ', this.accessory.displayName);
+      Log.error('Failed to get position: ', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
     // Note that the hub reports 0 as fully open and 100 as closed; Homekit
     // expects the opposite.
     const currentPos = (100 - this.currentState.data.currentPosition);
-    this.platform.log.info(
-        'Returning position: ', [this.accessory.displayName, currentPos]);
+    Log.info('Returning position: ', [this.accessory.displayName, currentPos]);
     return currentPos;
   }
 }

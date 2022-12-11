@@ -16,6 +16,12 @@
         "type": "string",
         "description": "IP of the Connector hub device. Fill this in if UDP multicast discovery is not working.",
         "required": false
+      },
+      "enableDebug": {
+        "title": "Debug Logging",
+        "type": "boolean",
+        "description": "Enables verbose logging of plugin events.",
+        "default": false
       }
     }
   }

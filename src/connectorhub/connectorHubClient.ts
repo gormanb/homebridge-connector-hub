@@ -1,6 +1,6 @@
 /* eslint-disable indent */
 import {DgramAsPromised} from 'dgram-as-promised';
-import {Logger, PlatformConfig} from 'homebridge';
+import {PlatformConfig} from 'homebridge';
 
 import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
@@ -57,7 +57,6 @@ export class ConnectorHubClient {
       private readonly config: PlatformConfig,
       private readonly deviceInfo: hubapi.DeviceInfo,
       private readonly hubToken: string,
-      private readonly log: Logger,
   ) {
     this.sendIp = (this.config.hubIp || consts.kMulticastIp);
     this.accessToken = helpers.computeAccessToken(
