@@ -116,7 +116,9 @@ export class BlindAccessory {
       Log.debug(`Updated ${this.accessory.displayName} state:`, newState);
       // Note that the hub reports 0 as fully open and 100 as closed, but
       // Homekit expects the opposite. Correct the value before reporting.
-      const newPos = (100 - newState.data.currentPosition);
+      const newPos = newState.data.currentPosition !== undefined ?
+          (100 - newState.data.currentPosition) :
+          (100 * newState.data.operation);
       Log.info('Updating position ', [this.accessory.displayName, newPos]);
       // Update the TargetPosition, since we've just reached it, and the actual
       // CurrentPosition. Syncs Homekit if blinds are moved by another app.
@@ -199,7 +201,9 @@ export class BlindAccessory {
     Log.debug(`${this.accessory.displayName} state:`, this.currentState);
     // Note that the hub reports 0 as fully open and 100 as closed, but
     // Homekit expects the opposite. Correct the value before reporting.
-    const currentPos = (100 - this.currentState.data.currentPosition);
+    const currentPos = this.currentState.data.currentPosition !== undefined ?
+        (100 - this.currentState.data.currentPosition) :
+        (100 * this.currentState.data.operation);
     Log.info('Returning position: ', [this.accessory.displayName, currentPos]);
     return currentPos;
   }

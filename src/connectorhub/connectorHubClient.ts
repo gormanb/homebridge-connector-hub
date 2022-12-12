@@ -2,6 +2,8 @@
 import {DgramAsPromised} from 'dgram-as-promised';
 import {PlatformConfig} from 'homebridge';
 
+import {Log} from '../util/log';
+
 import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
 import * as helpers from './connector-hub-helpers';
@@ -74,6 +76,12 @@ export class ConnectorHubClient {
   }
 
   public setTargetPosition(position: number): Promise<DeviceResponse> {
+    if (position === 100 || position === 0) {
+      const opCode = position === 0 ? hubapi.DeviceOpCode.kOpen :
+                                      hubapi.DeviceOpCode.kClose;
+      Log.debug('Simple target command:', {operation: opCode});
+      return this.setDeviceState({operation: opCode});
+    }
     return this.setDeviceState({targetPosition: position});
   }
 

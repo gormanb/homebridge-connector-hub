@@ -1,7 +1,7 @@
 /*
  * A set of enums and interfaces laying out the Connector hub wire protocol.
  */
-enum DeviceOpCode {
+export enum DeviceOpCode {
   kClose = 0,
   kOpen = 1,
   kStopped = 2,
