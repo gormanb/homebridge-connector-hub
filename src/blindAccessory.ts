@@ -172,9 +172,12 @@ export class BlindAccessory {
     const adjustedTarget = (100 - <number>targetValue);
     const ack = <WriteDeviceResponse>(
         await this.client.setTargetPosition(adjustedTarget));
+
+    // Log the response from the hub if we are in debug mode.
+    Log.debug('Target response:', ack ? ack : 'None');
+
     if (!ack || ack.actionResult) {
       Log.error('Failed to target', this.accessory.displayName);
-      Log.debug('Target response:', ack ? ack : 'None');
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
