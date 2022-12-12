@@ -6,6 +6,8 @@
 /* eslint-disable indent */
 import * as aesjs from 'aes-js';
 
+import {Log} from '../util/log';
+
 import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
 
@@ -14,6 +16,13 @@ import * as consts from './connector-hub-constants';
 //
 
 export function computeAccessToken({connectorKey, hubToken}): string {
+  // Connector Key is required, but can still be left empty in the config.
+  // Handle this scenario so that we don't throw an exception here. We will
+  // still be able to report the status of devices, but not control them.
+  if (!connectorKey) {
+    Log.error('Connector Key not configured. Devices cannot be controlled.');
+    return 'INVALID_ACCESS_TOKEN_NO_CONNECTOR_KEY';
+  }
   const aesEcb =
       new aesjs.ModeOfOperation.ecb(aesjs.utils.utf8.toBytes(connectorKey));
   const tokenEnc = aesEcb.encrypt(aesjs.utils.utf8.toBytes(hubToken));

@@ -77,6 +77,9 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       return response;
     }
 
+    // Output the list of discovered devices in debug mode.
+    Log.debug('Discovered devices:', response);
+
     // Iterate over the discovered devices and register each of them.
     for (let devNum = 1; devNum < response.data.length; ++devNum) {
       // Generate a unique id for the accessory from its MAC address.

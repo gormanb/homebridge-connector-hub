@@ -128,6 +128,7 @@ export interface WriteDeviceAck {
   mac: string;
   deviceType: DeviceType;
   data: DeviceStatus;
+  actionResult?: string;
 }
 
 export interface ReadDeviceReq {

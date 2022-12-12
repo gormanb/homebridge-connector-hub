@@ -1,14 +1,15 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
-import {ReadDeviceAck} from './connectorhub/connector-hub-api';
+import {ReadDeviceAck, WriteDeviceAck} from './connectorhub/connector-hub-api';
 import * as helpers from './connectorhub/connector-hub-helpers';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
 import {Log} from './util/log';
 
-// Response type we expect for device status. Undefined if no response.
+// Response types we expect for device status. Undefined if no response.
 type ReadDeviceResponse = ReadDeviceAck|undefined;
+type WriteDeviceResponse = WriteDeviceAck|undefined;
 
 /**
  * An instance of this class is created for each accessory. Exposes both the
@@ -98,7 +99,7 @@ export class BlindAccessory {
 
     // If we didn't hear back from the device, exit early.
     if (!newState) {
-      Log.warn('Failed to update', this.accessory.displayName);
+      Log.warn('Periodic refresh failed:', this.accessory.displayName);
       return;
     }
 
@@ -107,11 +108,14 @@ export class BlindAccessory {
       this.setAccessoryInformation(newState.data.type);
     }
 
-    // Note that the hub reports 0 as fully open and 100 as closed; Homekit
-    // expects the opposite. We extract 'lastPos' as below because lastState
-    // will be undefined on the first iteration, and so we force an update.
+    // We extract 'lastPos' as below because lastState will be undefined on the
+    // first iteration, so we wish to force an update.
     const lastPos = (this.lastState && this.lastState.data.currentPosition);
     if (newState.data.currentPosition !== lastPos) {
+      // Log the message received from the hub if we are in debug mode.
+      Log.debug(`Updated ${this.accessory.displayName} state:`, newState);
+      // Note that the hub reports 0 as fully open and 100 as closed, but
+      // Homekit expects the opposite. Correct the value before reporting.
       const newPos = (100 - newState.data.currentPosition);
       Log.info('Updating position ', [this.accessory.displayName, newPos]);
       // Update the TargetPosition, since we've just reached it, and the actual
@@ -166,9 +170,11 @@ export class BlindAccessory {
   async setTargetPosition(targetValue: CharacteristicValue) {
     // Homekit positions are the inverse of what the hub expects.
     const adjustedTarget = (100 - <number>targetValue);
-    const ack = await this.client.setTargetPosition(adjustedTarget);
-    if (!ack) {
+    const ack = <WriteDeviceResponse>(
+        await this.client.setTargetPosition(adjustedTarget));
+    if (!ack || ack.actionResult) {
       Log.error('Failed to target', this.accessory.displayName);
+      Log.debug('Target response:', ack ? ack : 'None');
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
@@ -186,8 +192,10 @@ export class BlindAccessory {
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
-    // Note that the hub reports 0 as fully open and 100 as closed; Homekit
-    // expects the opposite.
+    // Log the current state of the device if we are in debug mode.
+    Log.debug(`${this.accessory.displayName} state:`, this.currentState);
+    // Note that the hub reports 0 as fully open and 100 as closed, but
+    // Homekit expects the opposite. Correct the value before reporting.
     const currentPos = (100 - this.currentState.data.currentPosition);
     Log.info('Returning position: ', [this.accessory.displayName, currentPos]);
     return currentPos;
