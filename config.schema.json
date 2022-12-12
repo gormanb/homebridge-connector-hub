@@ -17,12 +17,26 @@
         "description": "IP of the Connector hub device. Fill this in if UDP multicast discovery is not working.",
         "required": false
       },
-      "enableDebug": {
-        "title": "Debug Logging",
+      "enableDebugLog": {
+        "title": "Verbose Logging",
         "type": "boolean",
-        "description": "Enables verbose logging of plugin events.",
+        "description": "Enables verbose debug logging of plugin events.",
         "default": false
       }
     }
-  }
+  },
+  "layout": [
+    "connectorKey",
+    "hubIp",
+    {
+      "title": "Debug Options",
+      "orderable": false,
+      "expandable": true,
+      "expanded": false,
+      "type": "section",
+      "items": [
+        "enableDebugLog"
+      ]
+    }
+  ]
 }

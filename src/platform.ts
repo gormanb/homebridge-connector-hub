@@ -34,7 +34,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       public readonly api: API,
   ) {
     // Configure the custom log with the Homebridge logger and debug config.
-    Log.configure(logger, config.enableDebug);
+    Log.configure(logger, config.enableDebugLog);
 
     // Notify the user that we have completed platform initialization.
     Log.debug('Finished initializing platform');

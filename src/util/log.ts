@@ -5,12 +5,12 @@ import {Logger} from 'homebridge';
  * A logging class intended to allow finer-grain control over logging levels.
  */
 export class Log {
+  private static enableDebugLog: boolean;
   private static internalLog: Logger;
-  private static enableDebug: boolean;
 
-  public static configure(internalLog: Logger, enableDebug: boolean) {
+  public static configure(internalLog: Logger, enableDebugLog: boolean) {
+    Log.enableDebugLog = enableDebugLog;
     Log.internalLog = internalLog;
-    Log.enableDebug = enableDebug;
   }
 
   public static info(message: string, ...parameters: any[]): void {
@@ -29,7 +29,7 @@ export class Log {
   // been started in debug mode. We use 'info' level and prepend [DEBUG] to
   // signify debug messages when the user has enabled verbose logging.
   public static debug(message: string, ...parameters: any[]): void {
-    if (Log.enableDebug) {
+    if (Log.enableDebugLog) {
       Log.internalLog.info(`[DEBUG] ${message}`, ...parameters);
     }
   }
