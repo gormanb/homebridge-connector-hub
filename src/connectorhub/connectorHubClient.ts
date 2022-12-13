@@ -2,8 +2,6 @@
 import {DgramAsPromised} from 'dgram-as-promised';
 import {PlatformConfig} from 'homebridge';
 
-import {Log} from '../util/log';
-
 import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
 import * as helpers from './connector-hub-helpers';
@@ -75,13 +73,16 @@ export class ConnectorHubClient {
     return sendCommand(command, this.sendIp);
   }
 
+  private setOpenCloseState(op: hubapi.DeviceOpCode): Promise<DeviceResponse> {
+    return this.setDeviceState({operation: op});
+  }
+
   public setTargetPosition(position: number): Promise<DeviceResponse> {
-    if (position === 100 || position === 0) {
-      const opCode = position === 0 ? hubapi.DeviceOpCode.kOpen :
-                                      hubapi.DeviceOpCode.kClose;
-      Log.debug('Simple target command:', {operation: opCode});
-      return this.setDeviceState({operation: opCode});
+    // Where feasible, use binary state commands for greater compatibility.
+    if (position === 0 || position === 100) {
+      return this.setOpenCloseState(helpers.positionToOpCode(position));
     }
+    // Otherwise, target the specified percentage position explicitly.
     return this.setDeviceState({targetPosition: position});
   }
 

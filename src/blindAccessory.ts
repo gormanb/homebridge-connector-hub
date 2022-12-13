@@ -26,6 +26,9 @@ export class BlindAccessory {
   private currentState: ReadDeviceResponse;
   private lastState: ReadDeviceResponse;
 
+  // Does the device only support binary open / close?
+  private usesBinaryState = false;
+
   constructor(
       private readonly platform: ConnectorHubPlatform,
       private readonly accessory: PlatformAccessory,
@@ -103,6 +106,11 @@ export class BlindAccessory {
       return;
     }
 
+    // Determine whether the device only reports binary open / closed state,
+    // then sanitize the status object to conform to the expected format.
+    this.usesBinaryState = (newState.data.currentPosition === undefined);
+    this.currentState = helpers.sanitizeDeviceState(newState);
+
     // If this is the first time we've read the device, update the model type.
     if (!this.lastState) {
       this.setAccessoryInformation(newState.data.type);
@@ -116,9 +124,7 @@ export class BlindAccessory {
       Log.debug(`Updated ${this.accessory.displayName} state:`, newState);
       // Note that the hub reports 0 as fully open and 100 as closed, but
       // Homekit expects the opposite. Correct the value before reporting.
-      const newPos = newState.data.currentPosition !== undefined ?
-          (100 - newState.data.currentPosition) :
-          (100 * newState.data.operation);
+      const newPos = (100 - newState.data.currentPosition);
       Log.info('Updating position ', [this.accessory.displayName, newPos]);
       // Update the TargetPosition, since we've just reached it, and the actual
       // CurrentPosition. Syncs Homekit if blinds are moved by another app.
@@ -169,21 +175,35 @@ export class BlindAccessory {
    * user changes the state of the blind. Throws SERVICE_COMMUNICATION_FAILURE
    * if the hub cannot be contacted.
    */
-  async setTargetPosition(targetValue: CharacteristicValue) {
+  async setTargetPosition(targetVal: CharacteristicValue) {
     // Homekit positions are the inverse of what the hub expects.
-    const adjustedTarget = (100 - <number>targetValue);
+    let adjustedTarget = (100 - <number>targetVal);
+
+    // Make sure the target value is supported for this device.
+    if (this.usesBinaryState) {
+      adjustedTarget = helpers.binarizeTargetPosition(
+          adjustedTarget, <ReadDeviceAck>(this.currentState || this.lastState));
+    }
+
+    // Send the request to the hub and wait for a response.
     const ack = <WriteDeviceResponse>(
         await this.client.setTargetPosition(adjustedTarget));
 
     // Log the response from the hub if we are in debug mode.
     Log.debug('Target response:', ack ? ack : 'None');
 
-    if (!ack || ack.actionResult) {
+    // Check whether the ack we received is valid for the request we sent.
+    const invalidAck = ack &&
+        (!this.usesBinaryState && ack.data.currentPosition === undefined);
+
+    // If we didn't receive an ack, or if the ack reports an exception from the
+    // hub, or if the ack is invalid, throw a communications error to Homekit.
+    if (!ack || ack.actionResult || invalidAck) {
       Log.error('Failed to target', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
-    Log.info('Targeted: ', [this.accessory.displayName, targetValue]);
+    Log.info('Targeted: ', [this.accessory.displayName, targetVal]);
   }
 
   /**
@@ -201,9 +221,7 @@ export class BlindAccessory {
     Log.debug(`${this.accessory.displayName} state:`, this.currentState);
     // Note that the hub reports 0 as fully open and 100 as closed, but
     // Homekit expects the opposite. Correct the value before reporting.
-    const currentPos = this.currentState.data.currentPosition !== undefined ?
-        (100 - this.currentState.data.currentPosition) :
-        (100 * this.currentState.data.operation);
+    const currentPos = (100 - this.currentState.data.currentPosition);
     Log.info('Returning position: ', [this.accessory.displayName, currentPos]);
     return currentPos;
   }

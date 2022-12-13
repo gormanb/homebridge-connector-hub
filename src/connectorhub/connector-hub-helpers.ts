@@ -67,9 +67,53 @@ export function makeWriteDeviceRequest(
   };
 }
 
+// Convert a percentage position into a binary open / closed state. Note that
+// the input is a Connector hub position, not an inverted Homekit position.
+export function positionToOpCode(position: number): hubapi.DeviceOpCode {
+  return position >= 50 ? hubapi.DeviceOpCode.kClose :
+                          hubapi.DeviceOpCode.kOpen;
+}
+
+// Given a kOpen or kClose opcode, return the equivalent Connector hub position.
+export function opCodeToPosition(opCode: hubapi.DeviceOpCode): number {
+  return consts.opCodePositions[opCode];
+}
+
 //
 // Helpers which assist in interpreting the responses from the hub.
 //
+
+// Helper function which ensures that the device state received from the hub is
+// in the format expected by the plugin. Mutates and returns the input object.
+export function sanitizeDeviceState(deviceState: hubapi.ReadDeviceAck) {
+  // Depending on the device type, the hub may return an explicit position or a
+  // simple open / closed state. In the former case, we don't change anything.
+  if (deviceState.data.currentPosition !== undefined) {
+    return deviceState;
+  }
+  // Otherwise, convert the open / closed state into a currentPosition.
+  if (deviceState.data.operation <= hubapi.DeviceOpCode.kOpen) {
+    // kClose = 0 and kOpen = 1, but currentPosition is 0 for open.
+    deviceState.data.currentPosition =
+        (deviceState.data.operation === hubapi.DeviceOpCode.kOpen ? 0 : 100);
+    return deviceState;
+  }
+  // If we reach here, then neither state nor position are available.
+  Log.warn('Failed to sanitize device state:', deviceState);
+  deviceState.data.currentPosition = 100;
+  return deviceState;
+}
+
+// Homekit may set a percentage position for a device that only supports binary
+// open and close. This function is used to handle this scenario. Note that the
+// input targetPos is a Connector hub position, not a Homekit position.
+export function binarizeTargetPosition(
+    targetPos: number, deviceState: hubapi.ReadDeviceAck): number {
+  // If the target is the same as the current position, do nothing. If not,
+  // return the inverse of the current state as the new target position.
+  const currentPos = opCodeToPosition(deviceState.data.operation);
+  return targetPos !== currentPos ? (100 - currentPos) : targetPos;
+}
 
 // Input is the "data.type" field from the ReadDeviceAck response.
 export function getDeviceModel(type: number): string {
