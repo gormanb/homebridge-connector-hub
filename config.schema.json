@@ -14,6 +14,7 @@
       "hubIp": {
         "title": "Connector Hub IP",
         "type": "string",
+        "format": "ipv4",
         "description": "IP of the Connector hub device. Fill this in if UDP multicast discovery is not working.",
         "required": false
       },

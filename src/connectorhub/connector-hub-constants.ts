@@ -7,13 +7,6 @@ export const kSendPort = 32100;
 // Battery level constants.
 export const kLowBatteryPercent = 15;
 
-// Discrete states that the blinds can be in.
-export enum BlindPositionState {
-  DECREASING,
-  INCREASING,
-  STOPPED
-}
-
 // Discrete commands that can be sent to the blinds.
 export const opCodes =
     ['close', 'open', 'stop', undefined, undefined, 'status'];

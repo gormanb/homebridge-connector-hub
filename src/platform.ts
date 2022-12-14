@@ -1,5 +1,6 @@
 /* eslint-disable indent */
 import {API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service} from 'homebridge';
+import {isIPv4} from 'net';
 
 import {BlindAccessory} from './blindAccessory';
 import {GetDeviceListAck} from './connectorhub/connector-hub-api';
@@ -36,17 +37,35 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     // Configure the custom log with the Homebridge logger and debug config.
     Log.configure(logger, config.enableDebugLog);
 
+    // If the config is not valid, bail out immediately. We will not discover
+    // any new accessories or register any handlers for cached accessories.
+    const validationErrors = this.validateConfig(config);
+    if (validationErrors.length > 0) {
+      Log.error('Plugin suspended. Invalid configuration:', validationErrors);
+      return;
+    }
+
     // Notify the user that we have completed platform initialization.
     Log.debug('Finished initializing platform');
 
-    // When this event is fired it means Homebridge has restored all cached
-    // accessories from disk. We only register new accessories after this event
-    // is fired, in order to ensure they weren't added to homebridge already.
-    // This event can also be used to start discovery of new accessories.
+    // This event is fired when Homebridge has restored all cached accessories.
+    // We must add handlers for these, and check for any new accessories.
     this.api.on('didFinishLaunching', () => {
       Log.debug('Finished restoring all cached accessories from disk');
       this.discoverDevices();
     });
+  }
+
+  // Validate that the plugin configuration conforms to the expected format.
+  private validateConfig(config: PlatformConfig): string[] {
+    const validationErrors: string[] = [];
+    if (!config.connectorKey) {
+      validationErrors.push('Connector Key has not been configured');
+    }
+    if (config.hubIp && !isIPv4(config.hubIp)) {
+      validationErrors.push(`Hub IP is not valid IPv4: ${config.hubIp}`);
+    }
+    return validationErrors;
   }
 
   /**
