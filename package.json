@@ -1,7 +1,7 @@
 {
   "displayName": "Homebridge Connector Hub",
   "name": "homebridge-connector-hub",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A Homebridge plugin to expose Connector+ compatible window blinds to Homekit",
   "license": "Apache-2.0",
   "repository": {
