@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable indent */
 import {DgramAsPromised} from 'dgram-as-promised';
 import {PlatformConfig} from 'homebridge';
+
+import {Log} from '../util/log';
 
 import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
@@ -8,15 +11,6 @@ import * as helpers from './connector-hub-helpers';
 
 const kSocketTimeoutMs = 250;
 const kMaxRetries = 3;
-
-// Function to safely parse possibly-invalid JSON.
-function tryParse(input: string) {
-  try {
-    return JSON.parse(input);
-  } catch (err) {
-    return undefined;
-  }
-}
 
 // Types we expect for connector hub requests and responses.
 type DeviceRequest =
@@ -40,13 +34,17 @@ async function sendCommand(
     // Set a maximum timeout for the request.
     setTimeout(() => socket.close(), kSocketTimeoutMs);
 
-    // Send the message and wait for a response from the hub.
-    const sendResult = socket.send(sendMsg, consts.kSendPort, ip);
-    response = await sendResult && await socket.recv();
+    try {
+      // Send the message and wait for a response from the hub.
+      const sendResult = socket.send(sendMsg, consts.kSendPort, ip);
+      response = await sendResult && await socket.recv();
+    } catch (ex: any) {
+      Log.error('Network error:', ex.message);
+    }
   }
 
   // Return a parsed response, if the operation was successful.
-  return (response ? tryParse(response.msg.toString()) : undefined);
+  return (response && helpers.tryParse(response.msg.toString()));
 }
 
 export class ConnectorHubClient {

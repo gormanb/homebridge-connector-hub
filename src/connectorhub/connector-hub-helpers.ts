@@ -3,6 +3,7 @@
  * hub and to aid in interpreting its responses.
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable indent */
 import * as aesjs from 'aes-js';
 
@@ -75,6 +76,16 @@ export function opCodeToPosition(opCode: hubapi.DeviceOpCode): number {
 //
 // Helpers which assist in interpreting the responses from the hub.
 //
+
+// Function to safely parse a possibly-invalid JSON response.
+export function tryParse(jsonStr: string) {
+  try {
+    return JSON.parse(jsonStr);
+  } catch (ex: any) {
+    Log.debug('Received invalid response:', [jsonStr, ex.message]);
+    return undefined;
+  }
+}
 
 // Helper function which ensures that the device state received from the hub is
 // in the format expected by the plugin. Mutates and returns the input object.

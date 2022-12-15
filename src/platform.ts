@@ -90,7 +90,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
         await ConnectorHubClient.getDeviceList(this.config.hubIp));
 
     if (!response) {
-      Log.info(
+      Log.warn(
           'Failed to contact hub. Retry in', kDiscoveryRefreshInterval, 'ms');
       setTimeout(() => this.discoverDevices(), kDiscoveryRefreshInterval);
       return response;
