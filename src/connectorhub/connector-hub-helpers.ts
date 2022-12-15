@@ -82,7 +82,7 @@ export function tryParse(jsonStr: string) {
   try {
     return JSON.parse(jsonStr);
   } catch (ex: any) {
-    Log.debug('Received invalid response:', [jsonStr, ex.message]);
+    Log.warn('Received invalid response:', [jsonStr, ex.message]);
     return undefined;
   }
 }

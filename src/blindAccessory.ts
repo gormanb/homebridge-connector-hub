@@ -189,9 +189,6 @@ export class BlindAccessory {
     const ack = <WriteDeviceResponse>(
         await this.client.setTargetPosition(adjustedTarget));
 
-    // Log the response from the hub if we are in debug mode.
-    Log.debug('Target response:', ack ? ack : 'None');
-
     // Check whether the ack we received is valid for the request we sent.
     const invalidAck = ack &&
         (!this.usesBinaryState && ack.data.currentPosition === undefined);
@@ -199,11 +196,14 @@ export class BlindAccessory {
     // If we didn't receive an ack, or if the ack reports an exception from the
     // hub, or if the ack is invalid, throw a communications error to Homekit.
     if (!ack || ack.actionResult || invalidAck) {
-      Log.error('Failed to target', this.accessory.displayName);
+      Log.error(
+          `Failed to set ${this.accessory.displayName} to ${targetVal}:`,
+          (ack || 'No response from hub'));
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
-    Log.info('Targeted: ', [this.accessory.displayName, targetVal]);
+    Log.info('Targeted:', [this.accessory.displayName, targetVal]);
+    Log.debug('Target response:', (ack || 'None'));
   }
 
   /**
