@@ -2,7 +2,7 @@
 import {API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service} from 'homebridge';
 import {isIPv4} from 'net';
 
-import {BlindAccessory} from './blindAccessory';
+import {ConnectorAccessory} from './connectorAccessory';
 import {GetDeviceListAck} from './connectorhub/connector-hub-api';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
@@ -27,7 +27,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   public readonly cachedAccessories: PlatformAccessory[] = [];
 
   // This array records the handlers which wrap each accessory.
-  public readonly accessoryHandlers: BlindAccessory[] = [];
+  public readonly accessoryHandlers: ConnectorAccessory[] = [];
 
   constructor(
       private readonly logger: Logger,
@@ -104,7 +104,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       // Generate a unique id for the accessory from its MAC address.
       const device =
           Object.assign({fwVersion: response.fwVersion}, response.data[devNum]);
-      const defaultDisplayName = `Connector Blind ${devNum}`;
+      const defaultDisplayName = `Connector Device ${devNum}`;
       const uuid = this.api.hap.uuid.generate(device.mac);
 
       // See if an accessory with the same uuid already exists.
@@ -129,7 +129,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
 
       // Create the accessory handler for this accessory.
       this.accessoryHandlers.push(
-          new BlindAccessory(this, accessory, response.token));
+          new ConnectorAccessory(this, accessory, response.token));
     }
 
     // Any cached accessories that remain in the cachedAccessories list are

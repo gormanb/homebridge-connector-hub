@@ -2,7 +2,7 @@
   "displayName": "Homebridge Connector Hub",
   "name": "homebridge-connector-hub",
   "version": "1.0.4",
-  "description": "A Homebridge plugin to expose Connector+ compatible window blinds to Homekit",
+  "description": "A Homebridge plugin to expose Connector+ compatible blinds, curtains, awnings etc to Homekit",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -33,6 +33,7 @@
     "shade",
     "curtain",
     "awning",
+    "gate",
     "window",
     "covering",
     "homekit",

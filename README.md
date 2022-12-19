@@ -1,7 +1,7 @@
 
 # Homebridge Connector Hub Plugin
 
-This plugin exposes blinds, shades, curtains and similar devices managed by a Connector Motor Hub [DD7002B](https://fccid.io/VYYDD7002B/User-Manual/User-manual-4082340) or [DD1554](https://fccid.io/VYY1554A00/Users-Manual/User-Manual-4750744) - typically manufactured by [Dooya](https://dooya.in/wi-fi-system/) and sold under various brand names - as Homekit accessories. If your blinds are controlled by the Connector+ app on [iOS](https://apps.apple.com/us/app/connector/id1344058317) or [Android](https://play.google.com/store/apps/details?id=com.smarthome.app.connector&gl=US), this plugin will make them available in Homekit.
+This plugin exposes blinds, shades, curtains and similar devices managed by a Connector Motor Hub [DD7002B](https://fccid.io/VYYDD7002B/User-Manual/User-manual-4082340) or [DD1554](https://fccid.io/VYY1554A00/Users-Manual/User-Manual-4750744) - typically manufactured by [Dooya](https://dooya.in/wi-fi-system/) and sold under various brand names - as Homekit accessories. If your devices are controlled by the Connector+ app on [iOS](https://apps.apple.com/us/app/connector/id1344058317) or [Android](https://play.google.com/store/apps/details?id=com.smarthome.app.connector&gl=US), this plugin will make them available in Homekit.
 
 Note that the devices must already have been paired with the hub via the app in order for them to be visible to this plugin.
 

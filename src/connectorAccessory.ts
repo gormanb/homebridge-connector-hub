@@ -13,14 +13,14 @@ type WriteDeviceResponse = WriteDeviceAck|undefined;
 
 /**
  * An instance of this class is created for each accessory. Exposes both the
- * WindowCovering and Battery services for the blind.
+ * WindowCovering and Battery services for the device.
  */
-export class BlindAccessory {
+export class ConnectorAccessory {
   private static readonly kRefreshInterval = 5000;
 
   private client: ConnectorHubClient;
   private batteryService: Service;
-  private blindService: Service;
+  private wcService: Service;
 
   // Cached device status, updated periodically.
   private currentState: ReadDeviceResponse;
@@ -42,7 +42,7 @@ export class BlindAccessory {
     this.setAccessoryInformation();
 
     // Get the WindowCovering service if it exists, otherwise create one.
-    this.blindService =
+    this.wcService =
         this.accessory.getService(this.platform.Service.WindowCovering) ||
         this.accessory.addService(this.platform.Service.WindowCovering);
 
@@ -52,7 +52,7 @@ export class BlindAccessory {
         this.accessory.addService(this.platform.Service.Battery);
 
     // Set the service name. This is the default name displayed by Homekit.
-    this.blindService.setCharacteristic(
+    this.wcService.setCharacteristic(
         this.platform.Characteristic.Name, accessory.displayName);
     this.batteryService.setCharacteristic(
         this.platform.Characteristic.Name, `${accessory.displayName} Battery`);
@@ -60,15 +60,15 @@ export class BlindAccessory {
     // Initialize the device state and set up a periodic refresh.
     this.updateDeviceStatus();
     setInterval(
-        () => this.updateDeviceStatus(), BlindAccessory.kRefreshInterval);
+        () => this.updateDeviceStatus(), ConnectorAccessory.kRefreshInterval);
 
     // Register handlers for the CurrentPosition Characteristic.
-    this.blindService
+    this.wcService
         .getCharacteristic(this.platform.Characteristic.CurrentPosition)
         .onGet(this.getCurrentPosition.bind(this));
 
     // Register handlers for the TargetPosition Characteristic
-    this.blindService
+    this.wcService
         .getCharacteristic(this.platform.Characteristic.TargetPosition)
         .onSet(this.setTargetPosition.bind(this));
   }
@@ -127,10 +127,10 @@ export class BlindAccessory {
       const newPos = (100 - newState.data.currentPosition);
       Log.info('Updating position ', [this.accessory.displayName, newPos]);
       // Update the TargetPosition, since we've just reached it, and the actual
-      // CurrentPosition. Syncs Homekit if blinds are moved by another app.
-      this.blindService.updateCharacteristic(
+      // CurrentPosition. Syncs Homekit if devices are moved by another app.
+      this.wcService.updateCharacteristic(
           this.platform.Characteristic.TargetPosition, newPos);
-      this.blindService.updateCharacteristic(
+      this.wcService.updateCharacteristic(
           this.platform.Characteristic.CurrentPosition, newPos);
     }
 
@@ -161,18 +161,18 @@ export class BlindAccessory {
     //   static readonly STOPPED = 2;
     // }
     //
-    // However, real-time polling of the blinds causes severe degradation of
+    // However, real-time polling of the devices causes severe degradation of
     // responsiveness over time; we therefore use passive read requests, which
     // only update the state after each movement is complete. This means that
     // only the position ever changes; the PositionState is always STOPPED. For
     // this reason, we don't bother reporting it. It is sufficient to report the
     // TargetPosition and CurrentPosition, and this also makes it simple to keep
-    // Homekit in sync with external movement of the blinds.
+    // Homekit in sync with external movement of the devices.
   }
 
   /**
    * Handle "set TargetPosition" requests from HomeKit. These are sent when the
-   * user changes the state of the blind. Throws SERVICE_COMMUNICATION_FAILURE
+   * user changes the state of the device. Throws SERVICE_COMMUNICATION_FAILURE
    * if the hub cannot be contacted.
    */
   async setTargetPosition(targetVal: CharacteristicValue) {

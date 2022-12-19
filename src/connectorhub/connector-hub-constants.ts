@@ -7,7 +7,7 @@ export const kSendPort = 32100;
 // Battery level constants.
 export const kLowBatteryPercent = 15;
 
-// Discrete commands that can be sent to the blinds.
+// Discrete commands that can be sent to the hub.
 export const opCodes =
     ['close', 'open', 'stop', undefined, undefined, 'status'];
 
@@ -26,7 +26,7 @@ export const deviceTypes = {
   '22000005': 'Wi-Fi Receiver',
 };
 
-// Recognised models of blinds that can be connected to the hub.
+// Recognised device models that can be connected to the hub.
 export const deviceModels = [
   undefined,
   'Roller Blinds',
@@ -55,7 +55,7 @@ export const wirelessModes = [
 // Motor type for the given device.
 export const voltageModes = ['AC Motor', 'DC Motor'];
 
-// Discrete states that the blinds can be in.
+// Discrete states that the devices can be in.
 export const stateModes = [
   'Not at any limit',
   'Top-limit',

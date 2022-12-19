@@ -33,9 +33,9 @@ export function makeGetDeviceListRequest(): hubapi.GetDeviceListReq {
 }
 
 // A ReadDevice request only updates the position after each movement of the
-// blinds is complete. In order to obtain the real-time state, we must issue a
+// device is complete. In order to obtain the real-time state, we must issue a
 // WriteDevice request for a 'status' operation. However, polling with this
-// method causes the responsiveness of the blinds to degrade over time; there
+// method causes the responsiveness of the devices to degrade over time; there
 // may be some kind of rate-limiting mechanism in the hub. ReadDevice has no
 // such issues, possibly because it reads a cached value from the hub itself.
 export function makeReadDeviceRequest(deviceInfo: hubapi.DeviceInfo):
@@ -121,7 +121,7 @@ export function binarizeTargetPosition(
 
 // Input is the "data.type" field from the ReadDeviceAck response.
 export function getDeviceModel(type: number): string {
-  return consts.deviceModels[type] || 'Generic Blind';
+  return consts.deviceModels[type] || 'Unidentified Device';
 }
 
 // Estimate battery charge percentage from reported voltage.
