@@ -41,14 +41,14 @@ export const deviceModels = [
   'Day & Night Blinds',
   'Dimming Blinds',
   'Curtain',
-  'Curtain (Open Left)',
-  'Curtain (Open Right)',
+  'Curtain Left',
+  'Curtain Right',
 ];
 
 export const wirelessModes = [
   'Uni-Directional',
   'Bi-Directional',
-  'Bi-Directional (with mechanical limits)',
+  'Bi-Directional, Mechanical Limits',
   'Other',
 ];
 
@@ -58,8 +58,8 @@ export const voltageModes = ['AC Motor', 'DC Motor'];
 // Discrete states that the devices can be in.
 export const stateModes = [
   'Not at any limit',
-  'Top-limit',
-  'Bottom-limit',
-  'Limits detected',
-  '3rd limit detected',
+  'Top Limit',
+  'Bottom Limit',
+  'Limits Detected',
+  '3rd Limit Detected',
 ];

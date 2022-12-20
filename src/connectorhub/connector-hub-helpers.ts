@@ -13,6 +13,16 @@ import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
 
 //
+// Special types used internally by the plugin.
+//
+
+// This augmented type is not part of the Hub API.
+export interface ExtendedDeviceInfo extends hubapi.DeviceInfo {
+  devNum: number;
+  fwVersion: string;
+}
+
+//
 // Helpers which facilitate communication with the hub.
 //
 
@@ -21,6 +31,10 @@ export function computeAccessToken({connectorKey, hubToken}): string {
       new aesjs.ModeOfOperation.ecb(aesjs.utils.utf8.toBytes(connectorKey));
   const tokenEnc = aesEcb.encrypt(aesjs.utils.utf8.toBytes(hubToken));
   return aesjs.utils.hex.fromBytes(tokenEnc).toUpperCase();
+}
+
+export function resolveIP(ip?: string): string {
+  return (ip || consts.kMulticastIp);
 }
 
 export function makeMsgId(): string {
@@ -122,6 +136,10 @@ export function binarizeTargetPosition(
 // Input is the "data.type" field from the ReadDeviceAck response.
 export function getDeviceModel(type: number): string {
   return consts.deviceModels[type] || 'Unidentified Device';
+}
+
+export function makeDeviceName(devNum: number, type: number): string {
+  return `${getDeviceModel(type)} #${devNum}`;
 }
 
 // Estimate battery charge percentage from reported voltage.

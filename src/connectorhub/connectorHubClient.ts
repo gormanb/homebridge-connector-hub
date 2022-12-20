@@ -56,19 +56,19 @@ export class ConnectorHubClient {
       private readonly deviceInfo: hubapi.DeviceInfo,
       private readonly hubToken: string,
   ) {
-    this.sendIp = (this.config.hubIp || consts.kMulticastIp);
+    this.sendIp = helpers.resolveIP(this.config.hubIp);
     this.accessToken = helpers.computeAccessToken(
         {connectorKey: this.config.connectorKey, hubToken: this.hubToken});
   }
 
   public static getDeviceList(ip?: string): Promise<DeviceResponse> {
-    const sendIp = (ip || consts.kMulticastIp);
-    return sendCommand(helpers.makeGetDeviceListRequest(), sendIp);
+    return sendCommand(
+        helpers.makeGetDeviceListRequest(), helpers.resolveIP(ip));
   }
 
   public getDeviceState(): Promise<DeviceResponse> {
-    const command = helpers.makeReadDeviceRequest(this.deviceInfo);
-    return sendCommand(command, this.sendIp);
+    return sendCommand(
+        helpers.makeReadDeviceRequest(this.deviceInfo), this.sendIp);
   }
 
   private setOpenCloseState(op: hubapi.DeviceOpCode): Promise<DeviceResponse> {

@@ -38,9 +38,6 @@ export class ConnectorAccessory {
     this.client = new ConnectorHubClient(
         this.platform.config, this.accessory.context.device, this.hubToken);
 
-    // Set the accessory information to be displayed in Homekit.
-    this.setAccessoryInformation();
-
     // Get the WindowCovering service if it exists, otherwise create one.
     this.wcService =
         this.accessory.getService(this.platform.Service.WindowCovering) ||
@@ -50,12 +47,6 @@ export class ConnectorAccessory {
     this.batteryService =
         this.accessory.getService(this.platform.Service.Battery) ||
         this.accessory.addService(this.platform.Service.Battery);
-
-    // Set the service name. This is the default name displayed by Homekit.
-    this.wcService.setCharacteristic(
-        this.platform.Characteristic.Name, accessory.displayName);
-    this.batteryService.setCharacteristic(
-        this.platform.Characteristic.Name, `${accessory.displayName} Battery`);
 
     // Initialize the device state and set up a periodic refresh.
     this.updateDeviceStatus();
@@ -74,16 +65,31 @@ export class ConnectorAccessory {
   }
 
   // Update the device information displayed in Homekit.
-  setAccessoryInformation(modelNum = 0, manufacturer = 'Dooya') {
+  setAccessoryInformation(deviceState: ReadDeviceAck) {
     const Characteristic = this.platform.Characteristic;
     const deviceInfo = this.accessory.context.device;
+
+    // Update the accessory display name, in case it wasn't set already.
+    this.accessory.displayName =
+        helpers.makeDeviceName(deviceInfo.devNum, deviceState.data.type);
+    this.platform.api.updatePlatformAccessories([this.accessory]);
+
+    // Set the service names. These are the default names displayed by Homekit.
+    this.wcService.setCharacteristic(
+        Characteristic.Name, this.accessory.displayName);
+    this.batteryService.setCharacteristic(
+        Characteristic.Name, `${this.accessory.displayName} Battery`);
+
+    // Update default accessory name and additional information in Homekit.
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
-        .setCharacteristic(Characteristic.Manufacturer, manufacturer)
+        .setCharacteristic(Characteristic.Name, this.accessory.displayName)
+        .setCharacteristic(Characteristic.Manufacturer, 'Dooya')
         .setCharacteristic(Characteristic.SerialNumber, deviceInfo.mac)
         .setCharacteristic(
             Characteristic.FirmwareRevision, deviceInfo.fwVersion)
         .setCharacteristic(
-            Characteristic.Model, helpers.getDeviceModel(modelNum));
+            Characteristic.Model,
+            helpers.getDeviceModel(deviceState.data.type));
   }
 
   /**
@@ -111,9 +117,9 @@ export class ConnectorAccessory {
     this.usesBinaryState = (newState.data.currentPosition === undefined);
     this.currentState = helpers.sanitizeDeviceState(newState);
 
-    // If this is the first time we've read the device, update the model type.
+    // The first time we read the device, we update the accessory details.
     if (!this.lastState) {
-      this.setAccessoryInformation(newState.data.type);
+      this.setAccessoryInformation(newState);
     }
 
     // We extract 'lastPos' as below because lastState will be undefined on the

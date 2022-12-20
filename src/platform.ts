@@ -4,6 +4,7 @@ import {isIPv4} from 'net';
 
 import {ConnectorAccessory} from './connectorAccessory';
 import {GetDeviceListAck} from './connectorhub/connector-hub-api';
+import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 import {Log} from './util/log';
@@ -100,12 +101,16 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     Log.debug('Discovered devices:', response);
 
     // Iterate over the discovered devices and register each of them.
+    // Skip index 0 since that entry always refers to the hub itself.
     for (let devNum = 1; devNum < response.data.length; ++devNum) {
+      // Augment the basic device information with additional details.
+      const deviceInfo: ExtendedDeviceInfo = Object.assign(
+          {devNum: devNum, fwVersion: response.fwVersion},
+          response.data[devNum]);
+
       // Generate a unique id for the accessory from its MAC address.
-      const device =
-          Object.assign({fwVersion: response.fwVersion}, response.data[devNum]);
+      const uuid = this.api.hap.uuid.generate(deviceInfo.mac);
       const defaultDisplayName = `Connector Device ${devNum}`;
-      const uuid = this.api.hap.uuid.generate(device.mac);
 
       // See if an accessory with the same uuid already exists.
       let accessory =
@@ -124,7 +129,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       }
 
       // Make sure the accessory stays in sync with any device config changes.
-      accessory.context.device = device;
+      accessory.context.device = deviceInfo;
       this.api.updatePlatformAccessories([accessory]);
 
       // Create the accessory handler for this accessory.
