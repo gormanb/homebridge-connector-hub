@@ -26,6 +26,9 @@ export class ConnectorAccessory {
   private currentState: ReadDeviceResponse;
   private lastState: ReadDeviceResponse;
 
+  // Current target position for this device.
+  private currentTargetPos = -1;
+
   // Does the device only support binary open / close?
   private usesBinaryState = false;
 
@@ -58,9 +61,14 @@ export class ConnectorAccessory {
         .getCharacteristic(this.platform.Characteristic.CurrentPosition)
         .onGet(this.getCurrentPosition.bind(this));
 
+    // Register handlers for the PositionState Characteristic.
+    this.wcService.getCharacteristic(this.platform.Characteristic.PositionState)
+        .onGet(this.getPositionState.bind(this));
+
     // Register handlers for the TargetPosition Characteristic
     this.wcService
         .getCharacteristic(this.platform.Characteristic.TargetPosition)
+        .onGet(this.getTargetPosition.bind(this))
         .onSet(this.setTargetPosition.bind(this));
   }
 
@@ -96,7 +104,12 @@ export class ConnectorAccessory {
    * This function is the main driver of the plugin. It periodically reads the
    * current device state from the hub and, if relevant values have changed,
    * pushes the new state to Homekit. This approach is taken because pulling the
-   * status from the hub whenever Homekit requests it is too slow.
+   * status from the hub whenever Homekit requests it is too slow. It also means
+   * that Homekit will stay in sync with any external changes to the device
+   * state, e.g. if the device is moved using a physical remote.
+   *
+   * Note that the hub does not report real-time values; it only updates the
+   * device state when a movement completes.
    */
   async updateDeviceStatus() {
     // Obtain the latest status from the device.
@@ -128,16 +141,23 @@ export class ConnectorAccessory {
     if (newState.data.currentPosition !== lastPos) {
       // Log the message received from the hub if we are in debug mode.
       Log.debug(`Updated ${this.accessory.displayName} state:`, newState);
+      // The hub updates only after completing each movement. Update the target
+      // position to match the new currentPosition. Usually this is a no-op, but
+      // it will keep Homekit in sync if the device is moved externally.
+      this.currentTargetPos = newState.data.currentPosition;
       // Note that the hub reports 0 as fully open and 100 as closed, but
       // Homekit expects the opposite. Correct the value before reporting.
       const newPos = (100 - newState.data.currentPosition);
       Log.info('Updating position ', [this.accessory.displayName, newPos]);
       // Update the TargetPosition, since we've just reached it, and the actual
-      // CurrentPosition. Syncs Homekit if devices are moved by another app.
+      // CurrentPosition. PositionState is STOPPED after a movement completes.
       this.wcService.updateCharacteristic(
           this.platform.Characteristic.TargetPosition, newPos);
       this.wcService.updateCharacteristic(
           this.platform.Characteristic.CurrentPosition, newPos);
+      this.wcService.updateCharacteristic(
+          this.platform.Characteristic.PositionState,
+          this.platform.Characteristic.PositionState.STOPPED);
     }
 
     // Update the battery level if it has changed since the last refresh.
@@ -147,7 +167,7 @@ export class ConnectorAccessory {
           helpers.getBatteryPercent(newState.data.batteryLevel);
       Log.info(
           'Updating battery ', [this.accessory.displayName, batteryPercent]);
-      // Push the new battery percentage level to Homekit.
+      // Push the new battery level and other details to Homekit.
       this.batteryService.updateCharacteristic(
           this.platform.Characteristic.BatteryLevel, batteryPercent);
       this.batteryService.updateCharacteristic(
@@ -158,22 +178,6 @@ export class ConnectorAccessory {
           newState.data.chargingState ||
               this.platform.Characteristic.ChargingState.NOT_CHARGING);
     }
-
-    // The 'data.operation' value mirrors the Characteristic.PositionState enum:
-    //
-    // PositionState extends Characteristic {
-    //   static readonly DECREASING = 0;
-    //   static readonly INCREASING = 1;
-    //   static readonly STOPPED = 2;
-    // }
-    //
-    // However, real-time polling of the devices causes severe degradation of
-    // responsiveness over time; we therefore use passive read requests, which
-    // only update the state after each movement is complete. This means that
-    // only the position ever changes; the PositionState is always STOPPED. For
-    // this reason, we don't bother reporting it. It is sufficient to report the
-    // TargetPosition and CurrentPosition, and this also makes it simple to keep
-    // Homekit in sync with external movement of the devices.
   }
 
   /**
@@ -208,8 +212,25 @@ export class ConnectorAccessory {
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
+
+    // Record the current targeted position.
+    this.currentTargetPos = adjustedTarget;
+
+    // Log the result of the operation for the user.
     Log.info('Targeted:', [this.accessory.displayName, targetVal]);
     Log.debug('Target response:', (ack || 'None'));
+  }
+
+  async getTargetPosition(): Promise<CharacteristicValue> {
+    // If a target position hasn't been set yet, report a communication error.
+    if (this.currentTargetPos < 0) {
+      throw new this.platform.api.hap.HapStatusError(
+          this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
+    // Target is cached in Connector hub format, convert to Homekit format.
+    const currentTarget = (100 - this.currentTargetPos);
+    Log.info('Returning target: ', [this.accessory.displayName, currentTarget]);
+    return currentTarget;
   }
 
   /**
@@ -230,5 +251,33 @@ export class ConnectorAccessory {
     const currentPos = (100 - this.currentState.data.currentPosition);
     Log.info('Returning position: ', [this.accessory.displayName, currentPos]);
     return currentPos;
+  }
+
+  /**
+   * In theory, the value of 'currentState.data.operation' would provide us with
+   * the correct PositionState. However, real-time polling of the devices causes
+   * severe degradation of responsiveness over time; we therefore use passive
+   * read requests, which only update the state after each movement is complete.
+   * This means that only the position ever changes, while the PositionState is
+   * always in the STOPPED state.
+   *
+   * Conversely, for devices which only use binary open/close commands, the op
+   * state is *never* STOPPED; it is always opening/open or closing/closed. But
+   * it is not possible to tell whether the motion is still in progress, or
+   * whether the operation code represents the current resting state.
+   *
+   * For these reasons, we compute the PositionState manually using the current
+   * and target positions.
+   */
+  async getPositionState(): Promise<CharacteristicValue> {
+    // If we don't know the current or target position, throw an exception.
+    if (this.currentTargetPos < 0 || !this.currentState) {
+      throw new this.platform.api.hap.HapStatusError(
+          this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
+    const posState = helpers.getPositionState(
+        this.currentState.data.currentPosition, this.currentTargetPos);
+    Log.info('Returning pos state: ', [this.accessory.displayName, posState]);
+    return posState;
   }
 }

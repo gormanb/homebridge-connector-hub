@@ -7,6 +7,13 @@ export const kSendPort = 32100;
 // Battery level constants.
 export const kLowBatteryPercent = 15;
 
+// Operation states that the hub may report.
+export enum OperationState {
+  CLOSED_CLOSING = 0,
+  OPEN_OPENING = 1,
+  STOPPED = 2
+}
+
 // Discrete commands that can be sent to the hub.
 export const opCodes =
     ['close', 'open', 'stop', undefined, undefined, 'status'];

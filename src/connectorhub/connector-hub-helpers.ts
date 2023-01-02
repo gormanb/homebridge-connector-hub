@@ -173,6 +173,12 @@ export function getBatteryPercent(batteryLevel: number): number {
   return 100;
 }
 
+export function getPositionState(pos: number, target: number): number {
+  return pos < target ? consts.OperationState.CLOSED_CLOSING :
+                        (pos > target ? consts.OperationState.OPEN_OPENING :
+                                        consts.OperationState.STOPPED);
+}
+
 export function isLowBattery(batteryLevel: number): boolean {
   return getBatteryPercent(batteryLevel) <= consts.kLowBatteryPercent;
 }
