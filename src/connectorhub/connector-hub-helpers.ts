@@ -91,7 +91,14 @@ export function opCodeToPosition(opCode: hubapi.DeviceOpCode): number {
 // Helpers which assist in interpreting the responses from the hub.
 //
 
-// Function to safely parse a possibly-invalid JSON response.
+// Helper functions to convert between Hub and Homekit percentages.
+function invertPercentage(percent: number): number {
+  return (100 - percent);
+}
+export {invertPercentage as fromHomekitPercent};
+export {invertPercentage as toHomekitPercent};
+
+// Helper function to safely parse a possibly-invalid JSON response.
 export function tryParse(jsonStr: string) {
   try {
     return JSON.parse(jsonStr);
@@ -111,9 +118,9 @@ export function sanitizeDeviceState(deviceState: hubapi.ReadDeviceAck) {
   }
   // Otherwise, convert the open / closed state into a currentPosition.
   if (deviceState.data.operation <= hubapi.DeviceOpCode.kOpen) {
-    // kClose = 0 and kOpen = 1, but currentPosition is 0 for open.
+    // Convert the device's operation code to a position value.
     deviceState.data.currentPosition =
-        (deviceState.data.operation === hubapi.DeviceOpCode.kOpen ? 0 : 100);
+        opCodeToPosition(deviceState.data.operation);
     return deviceState;
   }
   // If we reach here, then neither state nor position are available.
@@ -130,7 +137,9 @@ export function binarizeTargetPosition(
   // If the target is the same as the current position, do nothing. If not,
   // return the inverse of the current state as the new target position.
   const currentPos = opCodeToPosition(deviceState.data.operation);
-  return targetPos !== currentPos ? (100 - currentPos) : targetPos;
+  return (currentPos !== undefined && targetPos !== currentPos) ?
+      invertPercentage(currentPos) :
+      targetPos;
 }
 
 // Input is the "data.type" field from the ReadDeviceAck response.

@@ -147,7 +147,7 @@ export class ConnectorAccessory {
       this.currentTargetPos = newState.data.currentPosition;
       // Note that the hub reports 0 as fully open and 100 as closed, but
       // Homekit expects the opposite. Correct the value before reporting.
-      const newPos = (100 - newState.data.currentPosition);
+      const newPos = helpers.toHomekitPercent(newState.data.currentPosition);
       Log.info('Updating position ', [this.accessory.displayName, newPos]);
       // Update the TargetPosition, since we've just reached it, and the actual
       // CurrentPosition. PositionState is STOPPED after a movement completes.
@@ -187,9 +187,10 @@ export class ConnectorAccessory {
    */
   async setTargetPosition(targetVal: CharacteristicValue) {
     // Homekit positions are the inverse of what the hub expects.
-    let adjustedTarget = (100 - <number>targetVal);
+    let adjustedTarget = helpers.fromHomekitPercent(<number>targetVal);
 
-    // Make sure the target value is supported for this device.
+    // Make sure the target value is supported for this device. We know that if
+    // 'usesBinaryState' is set, we have already read and cached a device state.
     if (this.usesBinaryState) {
       adjustedTarget = helpers.binarizeTargetPosition(
           adjustedTarget, <ReadDeviceAck>(this.currentState || this.lastState));
@@ -228,8 +229,8 @@ export class ConnectorAccessory {
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
     // Target is cached in Connector hub format, convert to Homekit format.
-    const currentTarget = (100 - this.currentTargetPos);
-    Log.info('Returning target: ', [this.accessory.displayName, currentTarget]);
+    const currentTarget = helpers.toHomekitPercent(this.currentTargetPos);
+    Log.debug('Returning target:', [this.accessory.displayName, currentTarget]);
     return currentTarget;
   }
 
@@ -240,7 +241,7 @@ export class ConnectorAccessory {
    */
   async getCurrentPosition(): Promise<CharacteristicValue> {
     if (!this.currentState) {
-      Log.error('Failed to get position: ', this.accessory.displayName);
+      Log.error('Failed to get position:', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
@@ -248,8 +249,9 @@ export class ConnectorAccessory {
     Log.debug(`${this.accessory.displayName} state:`, this.currentState);
     // Note that the hub reports 0 as fully open and 100 as closed, but
     // Homekit expects the opposite. Correct the value before reporting.
-    const currentPos = (100 - this.currentState.data.currentPosition);
-    Log.info('Returning position: ', [this.accessory.displayName, currentPos]);
+    const currentPos =
+        helpers.toHomekitPercent(this.currentState.data.currentPosition);
+    Log.debug('Returning position:', [this.accessory.displayName, currentPos]);
     return currentPos;
   }
 
@@ -277,7 +279,7 @@ export class ConnectorAccessory {
     }
     const posState = helpers.getPositionState(
         this.currentState.data.currentPosition, this.currentTargetPos);
-    Log.info('Returning pos state: ', [this.accessory.displayName, posState]);
+    Log.debug('Returning pos state:', [this.accessory.displayName, posState]);
     return posState;
   }
 }
