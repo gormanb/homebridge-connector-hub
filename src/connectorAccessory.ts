@@ -72,7 +72,7 @@ export class ConnectorAccessory {
         .onSet(this.setTargetPosition.bind(this));
   }
 
-  // Update the device information displayed in Homekit.
+  // Update the device information displayed in Homekit. Only called once.
   setAccessoryInformation(deviceState: ReadDeviceAck) {
     const Characteristic = this.platform.Characteristic;
     const deviceInfo = this.accessory.context.device;
@@ -139,43 +139,61 @@ export class ConnectorAccessory {
     // first iteration, so we wish to force an update.
     const lastPos = (this.lastState && this.lastState.data.currentPosition);
     if (newState.data.currentPosition !== lastPos) {
-      // Log the message received from the hub if we are in debug mode.
+      // Log a message for the user, with additional information in debug mode.
+      const newPos = helpers.toHomekitPercent(newState.data.currentPosition);
       Log.debug(`Updated ${this.accessory.displayName} state:`, newState);
+      Log.info('Updating position:', [this.accessory.displayName, newPos]);
+
       // The hub updates only after completing each movement. Update the target
       // position to match the new currentPosition. Usually this is a no-op, but
       // it will keep Homekit in sync if the device is moved externally.
       this.currentTargetPos = newState.data.currentPosition;
-      // Note that the hub reports 0 as fully open and 100 as closed, but
-      // Homekit expects the opposite. Correct the value before reporting.
-      const newPos = helpers.toHomekitPercent(newState.data.currentPosition);
-      Log.info('Updating position ', [this.accessory.displayName, newPos]);
-      // Update the TargetPosition, since we've just reached it, and the actual
-      // CurrentPosition. PositionState is STOPPED after a movement completes.
-      this.wcService.updateCharacteristic(
-          this.platform.Characteristic.TargetPosition, newPos);
-      this.wcService.updateCharacteristic(
-          this.platform.Characteristic.CurrentPosition, newPos);
-      this.wcService.updateCharacteristic(
-          this.platform.Characteristic.PositionState,
-          this.platform.Characteristic.PositionState.STOPPED);
+      // Push the new state of the window covering properties to Homekit.
+      this.updateWindowCoveringService();
     }
 
     // Update the battery level if it has changed since the last refresh.
     const lastBattery = (this.lastState && this.lastState.data.batteryLevel);
     if (newState.data.batteryLevel !== lastBattery) {
-      const batteryPercent =
-          helpers.getBatteryPercent(newState.data.batteryLevel);
-      Log.info(
-          'Updating battery ', [this.accessory.displayName, batteryPercent]);
-      // Push the new battery level and other details to Homekit.
+      // Log a message for the user, then push the new battery state to Homekit.
+      const batteryPC = helpers.getBatteryPercent(newState.data.batteryLevel);
+      Log.info('Updating battery:', [this.accessory.displayName, batteryPC]);
+      this.updateBatteryService();
+    }
+  }
+
+  // Push the current status of the window covering properties to Homekit.
+  updateWindowCoveringService() {
+    // We only update if we have an up-to-date device state. Note that the hub
+    // reports 0 as fully open and 100 as closed, but Homekit expects the
+    // opposite. Correct the values before reporting.
+    if (this.currentState) {
+      this.wcService.updateCharacteristic(
+          this.platform.Characteristic.CurrentPosition,
+          helpers.toHomekitPercent(this.currentState.data.currentPosition));
+      this.wcService.updateCharacteristic(
+          this.platform.Characteristic.TargetPosition,
+          helpers.toHomekitPercent(this.currentTargetPos));
+      this.wcService.updateCharacteristic(
+          this.platform.Characteristic.PositionState,
+          helpers.getPositionState(
+              this.currentState.data.currentPosition, this.currentTargetPos));
+    }
+  }
+
+  // Push the current values of the battery service properties to Homekit.
+  updateBatteryService() {
+    // We only update if we have an up-to-date device state.
+    if (this.currentState) {
       this.batteryService.updateCharacteristic(
-          this.platform.Characteristic.BatteryLevel, batteryPercent);
+          this.platform.Characteristic.BatteryLevel,
+          helpers.getBatteryPercent(this.currentState.data.batteryLevel));
       this.batteryService.updateCharacteristic(
           this.platform.Characteristic.StatusLowBattery,
-          helpers.isLowBattery(newState.data.batteryLevel));
+          helpers.isLowBattery(this.currentState.data.batteryLevel));
       this.batteryService.updateCharacteristic(
           this.platform.Characteristic.ChargingState,
-          newState.data.chargingState ||
+          this.currentState.data.chargingState ||
               this.platform.Characteristic.ChargingState.NOT_CHARGING);
     }
   }
@@ -214,8 +232,9 @@ export class ConnectorAccessory {
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
 
-    // Record the current targeted position.
+    // Record the current targeted position, and inform Homekit.
     this.currentTargetPos = adjustedTarget;
+    this.updateWindowCoveringService();
 
     // Log the result of the operation for the user.
     Log.info('Targeted:', [this.accessory.displayName, targetVal]);
