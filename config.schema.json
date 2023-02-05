@@ -11,33 +11,22 @@
         "description": "Key obtained from the Connector app. Go to Profile > About and tap the screen five times.",
         "required": true
       },
-      "hubIp": {
-        "title": "Connector Hub IP",
-        "type": "string",
-        "format": "ipv4",
-        "description": "IP of the Connector hub device. Fill this in if UDP multicast discovery is not working.",
-        "required": false
+      "hubIps": {
+        "title": "Connector Hub / Wifi Device IPs",
+        "description": "If you have more than one hub or WiFi motor device, or if you have a single hub/device but UDP multicast auto-discovery is not working, specify the IPs of each device here.",
+        "type": "array",
+        "required": true,
+        "minLength": 0,
+        "items": {
+          "type": "string",
+          "format": "ipv4"
+        }
       },
       "enableDebugLog": {
-        "title": "Verbose Logging",
+        "title": "Debug Logging",
         "type": "boolean",
-        "description": "Enables verbose debug logging of plugin events.",
         "default": false
       }
     }
-  },
-  "layout": [
-    "connectorKey",
-    "hubIp",
-    {
-      "title": "Debug Options",
-      "orderable": false,
-      "expandable": true,
-      "expanded": false,
-      "type": "section",
-      "items": [
-        "enableDebugLog"
-      ]
-    }
-  ]
+  }
 }

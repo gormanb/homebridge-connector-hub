@@ -35,11 +35,13 @@ export class ConnectorAccessory {
   constructor(
       private readonly platform: ConnectorHubPlatform,
       private readonly accessory: PlatformAccessory,
+      private readonly hubIp: string,
       private readonly hubToken: string,
   ) {
     // Create a new client connection for this device.
     this.client = new ConnectorHubClient(
-        this.platform.config, this.accessory.context.device, this.hubToken);
+        this.platform.config, this.accessory.context.device, this.hubIp,
+        this.hubToken);
 
     // Get the WindowCovering service if it exists, otherwise create one.
     this.wcService =

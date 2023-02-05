@@ -8,7 +8,7 @@ export enum DeviceOpCode {
   kStatusQuery = 5
 }
 
-enum DeviceType {
+export enum DeviceType {
   kWiFiBridge = '02000001',
   k433MHzRadioMotor = '10000000',
   kWiFiCurtain = '22000000',

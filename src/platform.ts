@@ -3,7 +3,8 @@ import {API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, P
 import {isIPv4} from 'net';
 
 import {ConnectorAccessory} from './connectorAccessory';
-import {GetDeviceListAck} from './connectorhub/connector-hub-api';
+import {DeviceType, GetDeviceListAck} from './connectorhub/connector-hub-api';
+import * as consts from './connectorhub/connector-hub-constants';
 import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
@@ -25,10 +26,13 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       this.api.hap.Characteristic;
 
   // This array is used to track restored cached accessories.
-  public readonly cachedAccessories: PlatformAccessory[] = [];
+  private readonly cachedAccessories: PlatformAccessory[] = [];
 
   // This array records the handlers which wrap each accessory.
-  public readonly accessoryHandlers: ConnectorAccessory[] = [];
+  private readonly accessoryHandlers: ConnectorAccessory[] = [];
+
+  // This array records which hubs have been scanned for devices.
+  private readonly scannedHubs: string[] = [];
 
   constructor(
       private readonly logger: Logger,
@@ -63,8 +67,9 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     if (!config.connectorKey) {
       validationErrors.push('Connector Key has not been configured');
     }
-    if (config.hubIp && !isIPv4(config.hubIp)) {
-      validationErrors.push(`Hub IP is not valid IPv4: ${config.hubIp}`);
+    const invalidIps = config.hubIps.filter((ip: string) => !isIPv4(ip));
+    for (const invalidIp of invalidIps) {
+      validationErrors.push(`Hub IP is not valid IPv4: ${invalidIp}`);
     }
     return validationErrors;
   }
@@ -74,9 +79,26 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
    * from disk at startup. Here we add the cached accessories to a list which
    * will be examined later during the 'discoverDevices' phase.
    */
-  configureAccessory(accessory: PlatformAccessory) {
+  public configureAccessory(accessory: PlatformAccessory) {
     Log.info('Loading accessory from cache:', accessory.displayName);
     this.cachedAccessories.push(accessory);
+  }
+
+  /**
+   * Iterate over the given hub IPs and begin the discovery process for each.
+   * Note that we use the term "hub" here to distinguish them from individual
+   * devices, but in practice a device may be its own hub if, for instance, it
+   * is a WiFi motor device.
+   */
+  private async discoverDevices() {
+    if (this.config.hubIps.length === 0) {
+      Log.info('No device IPs configured, defaulting to multicast discovery');
+      this.config.hubIps.push(consts.kMulticastIp);
+    }
+    for (const hubIp of this.config.hubIps) {
+      this.scanHubOrWifiDevice(hubIp);
+    }
+    this.removeStaleAccessories();
   }
 
   /**
@@ -84,16 +106,17 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
    * once; previously created accessories must not be registered again, to
    * avoid "duplicate UUID" errors.
    */
-  async discoverDevices() {
+  private async scanHubOrWifiDevice(hubIp: string) {
     // Discover accessories from the local network. If we fail to discover
     // anything, schedule another discovery attempt in the future.
-    const response = <DeviceListResponse>(
-        await ConnectorHubClient.getDeviceList(this.config.hubIp));
+    const response =
+        <DeviceListResponse>(await ConnectorHubClient.getDeviceList(hubIp));
 
     if (!response) {
       Log.warn(
-          'Failed to contact hub. Retry in', kDiscoveryRefreshInterval, 'ms');
-      setTimeout(() => this.discoverDevices(), kDiscoveryRefreshInterval);
+          `Failed to reach ${hubIp}, retry in ${kDiscoveryRefreshInterval}ms`);
+      setTimeout(
+          () => this.scanHubOrWifiDevice(hubIp), kDiscoveryRefreshInterval);
       return response;
     }
 
@@ -101,12 +124,15 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     Log.debug('Discovered devices:', response);
 
     // Iterate over the discovered devices and register each of them.
-    // Skip index 0 since that entry always refers to the hub itself.
-    for (let devNum = 1; devNum < response.data.length; ++devNum) {
+    for (const discoveredDevice of response.data) {
+      // If this entry is the hub itself, skip over it and continue.
+      if (discoveredDevice.deviceType === DeviceType.kWiFiBridge) {
+        continue;
+      }
       // Augment the basic device information with additional details.
+      const devNum = this.accessoryHandlers.length + 1;
       const deviceInfo: ExtendedDeviceInfo = Object.assign(
-          {devNum: devNum, fwVersion: response.fwVersion},
-          response.data[devNum]);
+          {devNum: devNum, fwVersion: response.fwVersion}, discoveredDevice);
 
       // Generate a unique id for the accessory from its MAC address.
       const uuid = this.api.hap.uuid.generate(deviceInfo.mac);
@@ -134,16 +160,28 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
 
       // Create the accessory handler for this accessory.
       this.accessoryHandlers.push(
-          new ConnectorAccessory(this, accessory, response.token));
+          new ConnectorAccessory(this, accessory, hubIp, response.token));
     }
 
+    // Record that we have successfully scanned this hub for devices.
+    this.scannedHubs.push(hubIp);
+  }
+
+  private async removeStaleAccessories() {
+    // We don't know which accessories are stale until we have scanned all hubs.
+    if (this.scannedHubs.length !== this.config.hubIps.length) {
+      setTimeout(
+          () => this.removeStaleAccessories(), kDiscoveryRefreshInterval);
+      return;
+    }
     // Any cached accessories that remain in the cachedAccessories list are
-    // stale and no longer exist on the hub. Remove them from Homekit.
+    // stale and no longer exist on any hubs. Remove them from Homekit.
     let removedAccessory: PlatformAccessory|undefined;
     while ((removedAccessory = this.cachedAccessories.pop())) {
       Log.info('Removing stale accessory:', removedAccessory.displayName);
       this.api.unregisterPlatformAccessories(
           PLUGIN_NAME, PLATFORM_NAME, [removedAccessory]);
     }
+    Log.debug('Finished looking for stale accessories to remove');
   }
 }

@@ -49,26 +49,24 @@ async function sendCommand(
 
 export class ConnectorHubClient {
   private accessToken: string;
-  private sendIp: string;
 
   constructor(
       private readonly config: PlatformConfig,
       private readonly deviceInfo: hubapi.DeviceInfo,
+      private readonly hubIp: string,
       private readonly hubToken: string,
   ) {
-    this.sendIp = helpers.resolveIP(this.config.hubIp);
     this.accessToken = helpers.computeAccessToken(
         {connectorKey: this.config.connectorKey, hubToken: this.hubToken});
   }
 
-  public static getDeviceList(ip?: string): Promise<DeviceResponse> {
-    return sendCommand(
-        helpers.makeGetDeviceListRequest(), helpers.resolveIP(ip));
+  public static getDeviceList(hubIp: string): Promise<DeviceResponse> {
+    return sendCommand(helpers.makeGetDeviceListRequest(), hubIp);
   }
 
   public getDeviceState(): Promise<DeviceResponse> {
     return sendCommand(
-        helpers.makeReadDeviceRequest(this.deviceInfo), this.sendIp);
+        helpers.makeReadDeviceRequest(this.deviceInfo), this.hubIp);
   }
 
   private setOpenCloseState(op: hubapi.DeviceOpCode): Promise<DeviceResponse> {
@@ -91,6 +89,6 @@ export class ConnectorHubClient {
   private setDeviceState(command: hubapi.DeviceCmd): Promise<DeviceResponse> {
     const request = helpers.makeWriteDeviceRequest(
         this.deviceInfo, this.accessToken, command);
-    return sendCommand(request, this.sendIp);
+    return sendCommand(request, this.hubIp);
   }
 }
