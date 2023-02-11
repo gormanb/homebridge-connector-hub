@@ -3,6 +3,7 @@ import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
 import {ReadDeviceAck, WriteDeviceAck} from './connectorhub/connector-hub-api';
 import * as helpers from './connectorhub/connector-hub-helpers';
+import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
 import {Log} from './util/log';
@@ -76,12 +77,12 @@ export class ConnectorAccessory {
 
   // Update the device information displayed in Homekit. Only called once.
   setAccessoryInformation(deviceState: ReadDeviceAck) {
+    const deviceInfo: ExtendedDeviceInfo = this.accessory.context.device;
     const Characteristic = this.platform.Characteristic;
-    const deviceInfo = this.accessory.context.device;
 
     // Update the accessory display name, in case it wasn't set already.
     this.accessory.displayName =
-        helpers.makeDeviceName(deviceInfo.devNum, deviceState.data.type);
+        helpers.makeDeviceName(deviceInfo.mac, deviceState.data.type);
     this.platform.api.updatePlatformAccessories([this.accessory]);
 
     // Set the service names. These are the default names displayed by Homekit.

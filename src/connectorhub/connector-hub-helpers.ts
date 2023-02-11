@@ -11,6 +11,7 @@ import {Log} from '../util/log';
 
 import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
+import {kMacAddrLength} from './connector-hub-constants';
 
 //
 // Special types used internally by the plugin.
@@ -18,7 +19,6 @@ import * as consts from './connector-hub-constants';
 
 // This augmented type is not part of the Hub API.
 export interface ExtendedDeviceInfo extends hubapi.DeviceInfo {
-  devNum: number;
   fwVersion: string;
 }
 
@@ -147,8 +147,13 @@ export function getDeviceModel(type: number): string {
   return consts.deviceModels[type] || 'Unidentified Device';
 }
 
-export function makeDeviceName(devNum: number, type: number): string {
-  return `${getDeviceModel(type)} #${devNum}`;
+export function makeDeviceName(mac: string, type: number): string {
+  // The format of a device's MAC is [hub_mac][device_num] where the former is a
+  // 12-character hex string and the latter is a 4-digit numeric string. If this
+  // is a WiFi motor which does not have a hub, device_num can be empty.
+  const [macAddr, devNum] =
+      [mac.slice(0, kMacAddrLength), mac.slice(kMacAddrLength + 2)];
+  return `${getDeviceModel(type)} ${devNum.length ? devNum : '01'}:${macAddr}`;
 }
 
 // Estimate battery charge percentage from reported voltage.

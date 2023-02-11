@@ -130,13 +130,12 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
         continue;
       }
       // Augment the basic device information with additional details.
-      const devNum = this.accessoryHandlers.length + 1;
-      const deviceInfo: ExtendedDeviceInfo = Object.assign(
-          {devNum: devNum, fwVersion: response.fwVersion}, discoveredDevice);
+      const deviceInfo: ExtendedDeviceInfo =
+          Object.assign({fwVersion: response.fwVersion}, discoveredDevice);
 
       // Generate a unique id for the accessory from its MAC address.
+      const defaultDisplayName = `Connector Device ${deviceInfo.mac}`;
       const uuid = this.api.hap.uuid.generate(deviceInfo.mac);
-      const defaultDisplayName = `Connector Device ${devNum}`;
 
       // See if an accessory with the same uuid already exists.
       let accessory =

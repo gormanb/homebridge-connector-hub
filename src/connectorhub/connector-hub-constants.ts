@@ -7,6 +7,9 @@ export const kSendPort = 32100;
 // Battery level constants.
 export const kLowBatteryPercent = 15;
 
+// Length of a hub's MAC address, excluding colons.
+export const kMacAddrLength = 12;
+
 // Operation states that the hub may report.
 export enum OperationState {
   CLOSED_CLOSING = 0,
