@@ -47,7 +47,7 @@ export const deviceModels = [
   'Roller Shutter',
   'Roller Gate',
   'Awning',
-  'TDBU',
+  'TDBU Blinds',  // Top-Down Bottom-Up
   'Day & Night Blinds',
   'Dimming Blinds',
   'Curtain',

@@ -25,7 +25,7 @@ enum DeviceModel {
   kRollerShutter = 6,
   kRollerGate = 7,
   kAwning = 8,
-  kTDBU = 9,
+  kTopDownBottomUp = 9,
   kDayAndNightBlinds = 10,
   kDimmingBlinds = 11,
   kCurtain = 12,
@@ -87,6 +87,19 @@ interface DeviceStatus {
   RSSI: number;
 }
 
+// Not used at present, since Homekit does not support TDBU blinds.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface DeviceStatusTDBU extends DeviceStatus {
+  operation_T: DeviceOpCode;
+  operation_B: DeviceOpCode;
+  currentPosition_T: number;
+  currentPosition_B: number;
+  currentState_T: DeviceState;
+  currentState_B: DeviceState;
+  batteryLevel_T: number;
+  batteryLevel_B: number;
+}
+
 interface HeartbeatData {
   currentState: HubState;
   numberOfDevices: number;
@@ -97,6 +110,15 @@ export interface DeviceCmd {
   operation?: DeviceOpCode;
   targetPosition?: number;
   targetAngle?: number;
+}
+
+// Not used at present, since Homekit does not support TDBU blinds.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface DeviceCmdTDBU extends DeviceCmd {
+  operation_T?: DeviceOpCode;
+  operation_B?: DeviceOpCode;
+  targetPosition_T?: number;
+  targetPosition_B?: number;
 }
 
 //
@@ -149,7 +171,8 @@ export interface ReadDeviceAck {
   data: DeviceStatus;
 }
 
-// Sent to connected clients every 30-60s.
+// Sent to connected clients every 30-60s. Not used at present.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface Heartbeat {
   msgType: 'Heartbeat';
   mac: string;
@@ -158,7 +181,8 @@ interface Heartbeat {
   data: HeartbeatData;
 }
 
-// Sent to client on completion of an operation.
+// Sent to client on completion of an operation. Not used at present.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface Report {
   msgType: 'Report';
   mac: string;
