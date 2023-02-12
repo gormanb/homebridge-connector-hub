@@ -81,8 +81,8 @@ export class ConnectorAccessory {
     const Characteristic = this.platform.Characteristic;
 
     // Update the accessory display name, in case it wasn't set already.
-    this.accessory.displayName =
-        helpers.makeDeviceName(deviceInfo.mac, deviceState.data.type);
+    this.accessory.displayName = helpers.makeDeviceName(
+        deviceInfo.mac, deviceState.deviceType, deviceState.data.type);
     this.platform.api.updatePlatformAccessories([this.accessory]);
 
     // Set the service names. These are the default names displayed by Homekit.
@@ -100,7 +100,8 @@ export class ConnectorAccessory {
             Characteristic.FirmwareRevision, deviceInfo.fwVersion)
         .setCharacteristic(
             Characteristic.Model,
-            helpers.getDeviceModel(deviceState.data.type));
+            helpers.getDeviceModel(
+                deviceState.deviceType, deviceState.data.type));
   }
 
   /**

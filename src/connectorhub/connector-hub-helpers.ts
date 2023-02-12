@@ -142,18 +142,27 @@ export function binarizeTargetPosition(
       targetPos;
 }
 
-// Input is the "data.type" field from the ReadDeviceAck response.
-export function getDeviceModel(type: number): string {
-  return consts.deviceModels[type] || 'Unidentified Device';
+// The 'type' is the 'deviceType' field from the ReadDeviceAck response.
+// The 'subType' is the 'data.type' field from the ReadDeviceAck response.
+export function getDeviceModel(type: string, subType?: number): string {
+  // For some devices, such as a Wifi curtain motor, there is no device subtype
+  // and the model is determined by the type. For other devices, generally RF
+  // motors connected to a hub, look up the device subtype.
+  return subType ? consts.deviceModels[subType] || 'Unidentified Device' :
+                   consts.deviceTypes[type];
 }
 
-export function makeDeviceName(mac: string, type: number): string {
+export function makeDeviceName(
+    mac: string, type: string, subType?: number): string {
   // The format of a device's MAC is [hub_mac][device_num] where the former is a
   // 12-character hex string and the latter is a 4-digit numeric string. If this
   // is a WiFi motor which does not have a hub, device_num can be empty.
   const [macAddr, devNum] =
       [mac.slice(0, kMacAddrLength), mac.slice(kMacAddrLength + 2)];
-  return `${getDeviceModel(type)} ${devNum.length ? devNum : '01'}:${macAddr}`;
+  // Get the device model based on its type and sub-type.
+  const deviceModel = getDeviceModel(type, subType);
+  // Construct and return the final device name as '[model] [device_num]:[mac]'
+  return `${deviceModel} ${devNum.length ? devNum : '01'}:${macAddr}`;
 }
 
 // Estimate battery charge percentage from reported voltage.

@@ -71,11 +71,15 @@ export interface DeviceInfo {
 }
 
 interface DeviceStatus {
-  type: DeviceModel;
+  type: DeviceModel;  // Can be absent for a WiFi motor device
   operation: DeviceOpCode;
+  direction?: number;  // Observed on Wifi curtain, likely DeviceOpCode
   currentPosition: number;
+  targetPosition?: number;  // Only observed on Wifi motor devices
   currentAngle: number;
   currentState: DeviceState;
+  switchMode?: number;   // Observed on Wifi curtain, unknown function
+  controlMode?: number;  // Observed on Wifi curtain, unknown function
   voltageMode: VoltageMode;
   batteryLevel: number;
   chargingState: ChargingState;
