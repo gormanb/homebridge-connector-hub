@@ -91,12 +91,10 @@ export function opCodeToPosition(opCode: hubapi.DeviceOpCode): number {
 // Helpers which assist in interpreting the responses from the hub.
 //
 
-// Helper functions to convert between Hub and Homekit percentages.
-function invertPercentage(percent: number): number {
+// Helper function to convert between Hub and Homekit percentages.
+export function invertPercentage(percent: number): number {
   return (100 - percent);
 }
-export {invertPercentage as fromHomekitPercent};
-export {invertPercentage as toHomekitPercent};
 
 // Helper function to safely parse a possibly-invalid JSON response.
 export function tryParse(jsonStr: string) {
@@ -196,7 +194,9 @@ export function getBatteryPercent(batteryLevel: number): number {
   return 100;
 }
 
-export function getPositionState(pos: number, target: number): number {
+// Determines the direction in which the window covering is moving, given
+// current position and target. Assumes that a value of 100 is fully closed.
+export function getDirection(pos: number, target: number): number {
   return pos < target ? consts.OperationState.CLOSED_CLOSING :
                         (pos > target ? consts.OperationState.OPEN_OPENING :
                                         consts.OperationState.STOPPED);
