@@ -69,16 +69,11 @@ export class ConnectorHubClient {
         helpers.makeReadDeviceRequest(this.deviceInfo), this.hubIp);
   }
 
-  private setOpenCloseState(op: hubapi.DeviceOpCode): Promise<DeviceResponse> {
+  public setOpenCloseState(op: hubapi.DeviceOpCode): Promise<DeviceResponse> {
     return this.setDeviceState({operation: op});
   }
 
   public setTargetPosition(position: number): Promise<DeviceResponse> {
-    // Where feasible, use binary state commands for greater compatibility.
-    if (position === 0 || position === 100) {
-      return this.setOpenCloseState(helpers.positionToOpCode(position));
-    }
-    // Otherwise, target the specified percentage position explicitly.
     return this.setDeviceState({targetPosition: position});
   }
 

@@ -21,9 +21,6 @@ export enum OperationState {
 export const opCodes =
     ['close', 'open', 'stop', undefined, undefined, 'status'];
 
-// Maps opCodes to corresponding percentage position.
-export const opCodePositions = [100, 0];
-
 // States that the Connector hub can be in.
 export const hubStats = [undefined, 'Working', 'Pairing', 'Updating'];
 

@@ -1,9 +1,10 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
-import {DeviceInfo, DeviceType, ReadDeviceAck, WriteDeviceAck} from './connectorhub/connector-hub-api';
+import {DeviceInfo, ReadDeviceAck, WriteDeviceAck} from './connectorhub/connector-hub-api';
 import * as helpers from './connectorhub/connector-hub-helpers';
 import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
+import {ConnectorDeviceHandler} from './connectorhub/connectorDeviceHandler';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
 import {Log} from './util/log';
@@ -16,7 +17,7 @@ type WriteDeviceResponse = WriteDeviceAck|undefined;
  * An instance of this class is created for each accessory. Exposes both the
  * WindowCovering and Battery services for the device.
  */
-export class ConnectorAccessory {
+export class ConnectorAccessory extends ConnectorDeviceHandler {
   private static readonly kRefreshInterval = 5000;
 
   private client: ConnectorHubClient;
@@ -33,24 +34,14 @@ export class ConnectorAccessory {
   // Does the device only support binary open / close?
   private usesBinaryState = false;
 
-  // By default, the hub percentages are the inverse of Homekit's.
-  private fromHomekitPercent = helpers.invertPercentage;
-  private toHomekitPercent = helpers.invertPercentage;
-  private getDirection = helpers.getDirection;
-
   constructor(
       private readonly platform: ConnectorHubPlatform,
       private readonly accessory: PlatformAccessory,
       private readonly hubIp: string,
       private readonly hubToken: string,
   ) {
-    // Unlike hub devices, a WiFi curtain's position and target percentages are
-    // the same as Homekit. If this is a Wifi curtain, don't invert the values.
-    const devInfo = <DeviceInfo>this.accessory.context.device;
-    if (devInfo.deviceType === DeviceType.kWiFiCurtain) {
-      this.getDirection = (pos, target) => helpers.getDirection(target, pos);
-      this.fromHomekitPercent = this.toHomekitPercent = (pc) => pc;
-    }
+    // Initialize the superclass constructor.
+    super(<DeviceInfo>accessory.context.device);
 
     // Create a new client connection for this device.
     this.client = new ConnectorHubClient(
@@ -145,7 +136,7 @@ export class ConnectorAccessory {
     // Determine whether the device only reports binary open / closed state,
     // then sanitize the status object to conform to the expected format.
     this.usesBinaryState = (newState.data.currentPosition === undefined);
-    this.currentState = helpers.sanitizeDeviceState(newState);
+    this.currentState = this.sanitizeDeviceState(newState);
 
     // The first time we read the device, we update the accessory details.
     if (!this.lastState) {
@@ -221,23 +212,25 @@ export class ConnectorAccessory {
    * if the hub cannot be contacted.
    */
   async setTargetPosition(targetVal: CharacteristicValue) {
-    // Homekit positions are the inverse of what the hub expects.
+    // Convert from Homekit position to the equivalent Connector value.
     let adjustedTarget = this.fromHomekitPercent(<number>targetVal);
 
-    // Make sure the target value is supported for this device. We know that if
-    // 'usesBinaryState' is set, we have already read and cached a device state.
-    if (this.usesBinaryState) {
-      adjustedTarget = helpers.binarizeTargetPosition(
-          adjustedTarget, <ReadDeviceAck>(this.currentState || this.lastState));
-    }
-
-    // Send the request to the hub and wait for a response.
-    const ack = <WriteDeviceResponse>(
-        await this.client.setTargetPosition(adjustedTarget));
+    // Send the targeting request in the appropriate format for this device.
+    const ack = <WriteDeviceResponse>await (() => {
+      // If the device expects a binary open/close state, send a command.
+      if (this.usesBinaryState) {
+        adjustedTarget = this.binarizeTargetPosition(adjustedTarget);
+        return this.client.setOpenCloseState(
+            this.positionToOpCode(adjustedTarget));
+      }
+      // Otherwise, send a specific target position percentage value.
+      return this.client.setTargetPosition(adjustedTarget);
+    })();
 
     // Check whether the ack we received is valid for the request we sent.
     const invalidAck = ack &&
-        (!this.usesBinaryState && ack.data.currentPosition === undefined);
+        (!ack.data ||
+         (!this.usesBinaryState && ack.data.currentPosition === undefined));
 
     // If we didn't receive an ack, or if the ack reports an exception from the
     // hub, or if the ack is invalid, throw a communications error to Homekit.
@@ -283,8 +276,7 @@ export class ConnectorAccessory {
     }
     // Log the current state of the device if we are in debug mode.
     Log.debug(`${this.accessory.displayName} state:`, this.currentState);
-    // Note that the hub reports 0 as fully open and 100 as closed, but
-    // Homekit expects the opposite. Correct the value before reporting.
+    // Position is cached in Connector hub format, convert to Homekit format.
     const currentPos =
         this.toHomekitPercent(this.currentState.data.currentPosition);
     Log.debug('Returning position:', [this.accessory.displayName, currentPos]);

@@ -33,10 +33,6 @@ export function computeAccessToken({connectorKey, hubToken}): string {
   return aesjs.utils.hex.fromBytes(tokenEnc).toUpperCase();
 }
 
-export function resolveIP(ip?: string): string {
-  return (ip || consts.kMulticastIp);
-}
-
 export function makeMsgId(): string {
   // The ID is the current timestamp with all non-numeric chars removed.
   return (new Date()).toJSON().replaceAll(/\D/g, '');
@@ -75,26 +71,9 @@ export function makeWriteDeviceRequest(
   };
 }
 
-// Convert a percentage position into a binary open / closed state. Note that
-// the input is a Connector hub position, not an inverted Homekit position.
-export function positionToOpCode(position: number): hubapi.DeviceOpCode {
-  return position >= 50 ? hubapi.DeviceOpCode.kClose :
-                          hubapi.DeviceOpCode.kOpen;
-}
-
-// Given a kOpen or kClose opcode, return the equivalent Connector hub position.
-export function opCodeToPosition(opCode: hubapi.DeviceOpCode): number {
-  return consts.opCodePositions[opCode];
-}
-
 //
 // Helpers which assist in interpreting the responses from the hub.
 //
-
-// Helper function to convert between Hub and Homekit percentages.
-export function invertPercentage(percent: number): number {
-  return (100 - percent);
-}
 
 // Helper function to safely parse a possibly-invalid JSON response.
 export function tryParse(jsonStr: string) {
@@ -104,40 +83,6 @@ export function tryParse(jsonStr: string) {
     Log.warn('Received invalid response:', [jsonStr, ex.message]);
     return undefined;
   }
-}
-
-// Helper function which ensures that the device state received from the hub is
-// in the format expected by the plugin. Mutates and returns the input object.
-export function sanitizeDeviceState(deviceState: hubapi.ReadDeviceAck) {
-  // Depending on the device type, the hub may return an explicit position or a
-  // simple open / closed state. In the former case, we don't change anything.
-  if (deviceState.data.currentPosition !== undefined) {
-    return deviceState;
-  }
-  // Otherwise, convert the open / closed state into a currentPosition.
-  if (deviceState.data.operation <= hubapi.DeviceOpCode.kOpen) {
-    // Convert the device's operation code to a position value.
-    deviceState.data.currentPosition =
-        opCodeToPosition(deviceState.data.operation);
-    return deviceState;
-  }
-  // If we reach here, then neither state nor position are available.
-  Log.warn('Failed to sanitize device state:', deviceState);
-  deviceState.data.currentPosition = 100;
-  return deviceState;
-}
-
-// Homekit may set a percentage position for a device that only supports binary
-// open and close. This function is used to handle this scenario. Note that the
-// input targetPos is a Connector hub position, not a Homekit position.
-export function binarizeTargetPosition(
-    targetPos: number, deviceState: hubapi.ReadDeviceAck): number {
-  // If the target is the same as the current position, do nothing. If not,
-  // return the inverse of the current state as the new target position.
-  const currentPos = opCodeToPosition(deviceState.data.operation);
-  return (currentPos !== undefined && targetPos !== currentPos) ?
-      invertPercentage(currentPos) :
-      targetPos;
 }
 
 // The 'type' is the 'deviceType' field from the ReadDeviceAck response.
@@ -192,14 +137,6 @@ export function getBatteryPercent(batteryLevel: number): number {
     return 0;
   }
   return 100;
-}
-
-// Determines the direction in which the window covering is moving, given
-// current position and target. Assumes that a value of 100 is fully closed.
-export function getDirection(pos: number, target: number): number {
-  return pos < target ? consts.OperationState.CLOSED_CLOSING :
-                        (pos > target ? consts.OperationState.OPEN_OPENING :
-                                        consts.OperationState.STOPPED);
 }
 
 export function isLowBattery(batteryLevel: number): boolean {
