@@ -1,6 +1,9 @@
 # Ignore source code
 src
 
+# Ignore docs
+docs
+
 # ------------- Defaults ------------- #
 
 # gitHub actions

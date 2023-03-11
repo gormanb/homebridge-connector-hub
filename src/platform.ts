@@ -65,7 +65,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   private validateConfig(config: PlatformConfig): string[] {
     const validationErrors: string[] = [];
     if (!config.connectorKey) {
-      validationErrors.push('Connector Key has not been configured');
+      validationErrors.push('App Key has not been configured');
     }
     config.hubIps = (config.hubIps || []);
     const invalidIps = config.hubIps.filter((ip: string) => !isIPv4(ip));

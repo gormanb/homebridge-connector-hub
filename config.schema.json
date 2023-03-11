@@ -6,13 +6,13 @@
     "type": "object",
     "properties": {
       "connectorKey": {
-        "title": "Connector Key",
+        "title": "App Key",
         "type": "string",
-        "description": "Key obtained from the Connector app. Go to Profile > About and tap the screen five times.",
+        "description": "Key obtained from the blinds app. Go to the About page and tap the screen five times.",
         "required": true
       },
       "hubIps": {
-        "title": "Connector Hub / Wifi Device IPs",
+        "title": "Hub / Wifi Device IPs",
         "description": "If you have more than one hub or WiFi motor device, or if you have a single hub/device but UDP multicast auto-discovery is not working, specify the IPs of each device here.",
         "type": "array",
         "required": true,
