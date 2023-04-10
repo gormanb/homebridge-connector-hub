@@ -10,9 +10,6 @@ import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 import {Log} from './util/log';
 
-// Response type we expect from device discovery. Undefined if no response.
-type DeviceListResponse = GetDeviceListAck|undefined;
-
 // How long we wait after a failed discovery attempt before retrying.
 const kDiscoveryRefreshInterval = 5000;
 
@@ -110,57 +107,61 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   private async scanHubOrWifiDevice(hubIp: string) {
     // Discover accessories from the local network. If we fail to discover
     // anything, schedule another discovery attempt in the future.
-    const response =
-        <DeviceListResponse>(await ConnectorHubClient.getDeviceList(hubIp));
+    const responses =
+        <GetDeviceListAck[]>(await ConnectorHubClient.getDeviceList(hubIp));
 
-    if (!response) {
+    if (!responses) {
       Log.warn(
           `Failed to reach ${hubIp}, retry in ${kDiscoveryRefreshInterval}ms`);
       setTimeout(
           () => this.scanHubOrWifiDevice(hubIp), kDiscoveryRefreshInterval);
-      return response;
+      return responses;
     }
 
-    // Output the list of discovered devices in debug mode.
-    Log.debug('Discovered devices:', response);
+    // For each of the possibly multiple responses received...
+    for (const response of responses) {
+      // ... output the list of discovered devices in debug mode...
+      Log.debug('Discovered devices:', response);
 
-    // Iterate over the discovered devices and register each of them.
-    for (const discoveredDevice of response.data) {
-      // If this entry is the hub itself, skip over it and continue.
-      if (discoveredDevice.deviceType === DeviceType.kWiFiBridge) {
-        continue;
+      // ... and iterate over the discovered devices, registering each of them.
+      for (const discoveredDevice of response.data) {
+        // If this entry is the hub itself, skip over it and continue.
+        if (discoveredDevice.deviceType === DeviceType.kWiFiBridge) {
+          continue;
+        }
+        // Augment the basic device information with additional details.
+        const deviceInfo: ExtendedDeviceInfo =
+            Object.assign({fwVersion: response.fwVersion}, discoveredDevice);
+
+        // Generate a unique id for the accessory from its MAC address.
+        const defaultDisplayName = `Connector Device ${deviceInfo.mac}`;
+        const uuid = this.api.hap.uuid.generate(deviceInfo.mac);
+
+        // See if an accessory with the same uuid already exists.
+        let accessory =
+            this.cachedAccessories.find(accessory => accessory.UUID === uuid);
+
+        // If the accessory does not yet exist, we need to create it.
+        if (!accessory) {
+          Log.info('Adding new accessory:', defaultDisplayName);
+          accessory = new this.api.platformAccessory(defaultDisplayName, uuid);
+          this.api.registerPlatformAccessories(
+              PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        } else {
+          // Remove the cached accessory from the list before adding a handler.
+          this.cachedAccessories.splice(
+              this.cachedAccessories.indexOf(accessory), 1);
+        }
+
+        // Make sure the accessory stays in sync with any device config changes.
+        accessory.context.device = deviceInfo;
+        this.api.updatePlatformAccessories([accessory]);
+
+        // Create the accessory handler for this accessory.
+        Log.debug('Creating handler for accessory:', defaultDisplayName);
+        this.accessoryHandlers.push(
+            new ConnectorAccessory(this, accessory, hubIp, response.token));
       }
-      // Augment the basic device information with additional details.
-      const deviceInfo: ExtendedDeviceInfo =
-          Object.assign({fwVersion: response.fwVersion}, discoveredDevice);
-
-      // Generate a unique id for the accessory from its MAC address.
-      const defaultDisplayName = `Connector Device ${deviceInfo.mac}`;
-      const uuid = this.api.hap.uuid.generate(deviceInfo.mac);
-
-      // See if an accessory with the same uuid already exists.
-      let accessory =
-          this.cachedAccessories.find(accessory => accessory.UUID === uuid);
-
-      // If the accessory does not yet exist, we need to create it.
-      if (!accessory) {
-        Log.info('Adding new accessory:', defaultDisplayName);
-        accessory = new this.api.platformAccessory(defaultDisplayName, uuid);
-        this.api.registerPlatformAccessories(
-            PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      } else {
-        // Remove the cached accessory from the list before adding its handler.
-        this.cachedAccessories.splice(
-            this.cachedAccessories.indexOf(accessory), 1);
-      }
-
-      // Make sure the accessory stays in sync with any device config changes.
-      accessory.context.device = deviceInfo;
-      this.api.updatePlatformAccessories([accessory]);
-
-      // Create the accessory handler for this accessory.
-      this.accessoryHandlers.push(
-          new ConnectorAccessory(this, accessory, hubIp, response.token));
     }
 
     // Record that we have successfully scanned this hub for devices.

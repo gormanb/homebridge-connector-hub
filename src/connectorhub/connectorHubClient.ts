@@ -18,33 +18,56 @@ type DeviceRequest =
 type DeviceResponse =
     hubapi.GetDeviceListAck|hubapi.WriteDeviceAck|hubapi.ReadDeviceAck;
 
-async function sendCommand(
-    cmdObj: DeviceRequest, ip: string): Promise<DeviceResponse> {
-  // A promise that holds the ack response from the hub.
-  let response;
+// Function to send a request to the hub and receive a sequence of responses.
+async function sendCommandMultiResponse(
+    cmdObj: DeviceRequest, ip: string,
+    expectSingleResponse = false): Promise<DeviceResponse[]> {
+  // Array of responses received from the hub(s).
+  const responses: DeviceResponse[] = [];
 
   // Retry up to kMaxRetries times to overcome any transient network issues.
-  for (let attempt = 0; attempt < kMaxRetries && !response; ++attempt) {
+  for (let attempt = 0; attempt < kMaxRetries && !responses.length; ++attempt) {
     // Create a socket to service this request.
     const socket = DgramAsPromised.createSocket('udp4');
 
     // Convert the command to a byte buffer of the string representation.
     const sendMsg = Buffer.from(JSON.stringify(cmdObj));
 
-    // Set a maximum timeout for the request.
-    setTimeout(() => socket.close(), kSocketTimeoutMs);
-
     try {
-      // Send the message and wait for a response from the hub.
+      // Send the message and wait for confirmation that it was sent.
       const sendResult = socket.send(sendMsg, consts.kSendPort, ip);
-      response = await sendResult && await socket.recv();
+
+      // Holds the message parsed from the hub response.
+      let parsedMsg: DeviceResponse;
+
+      do {
+        // Set a maximum timeout for the request. If we get a response within
+        // the timeout, clear the timeout for the next iteration.
+        const timer = setTimeout(() => socket.close(), kSocketTimeoutMs);
+        const response = await sendResult && await socket.recv();
+        clearTimeout(timer);
+
+        // Try to parse the response and add it to the list of responses.
+        parsedMsg = response && helpers.tryParse(response.msg.toString());
+        if (parsedMsg) {
+          responses.push(parsedMsg);
+        }
+      } while (parsedMsg && !expectSingleResponse);
     } catch (ex: any) {
       Log.error('Network error:', ex.message);
     }
   }
 
-  // Return a parsed response, if the operation was successful.
-  return (response && helpers.tryParse(response.msg.toString()));
+  // Return a sequence of parsed response, if the operation was successful.
+  return responses.length > 0 ? responses : Promise.reject();
+}
+
+// Function to send a request to the hub and receive a single response.
+async function sendCommand(
+    cmdObj: DeviceRequest, ip: string): Promise<DeviceResponse> {
+  // Delegate to the generic function with the expectation of a single response.
+  const response = await sendCommandMultiResponse(cmdObj, ip, true);
+  return response ? response[0] : response;
 }
 
 export class ConnectorHubClient {
@@ -60,8 +83,8 @@ export class ConnectorHubClient {
         {connectorKey: this.config.connectorKey, hubToken: this.hubToken});
   }
 
-  public static getDeviceList(hubIp: string): Promise<DeviceResponse> {
-    return sendCommand(helpers.makeGetDeviceListRequest(), hubIp);
+  public static getDeviceList(hubIp: string): Promise<DeviceResponse[]> {
+    return sendCommandMultiResponse(helpers.makeGetDeviceListRequest(), hubIp);
   }
 
   public getDeviceState(): Promise<DeviceResponse> {
