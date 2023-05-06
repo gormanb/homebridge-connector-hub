@@ -110,7 +110,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     const responses =
         <GetDeviceListAck[]>(await ConnectorHubClient.getDeviceList(hubIp));
 
-    if (!responses) {
+    if (!responses || responses.length === 0) {
       Log.warn(
           `Failed to reach ${hubIp}, retry in ${kDiscoveryRefreshInterval}ms`);
       setTimeout(

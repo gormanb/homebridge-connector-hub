@@ -58,8 +58,8 @@ async function sendCommandMultiResponse(
     }
   }
 
-  // Return a sequence of parsed response, if the operation was successful.
-  return responses.length > 0 ? responses : Promise.reject();
+  // Return a series of responses, or an empty array if the op was unsuccessful.
+  return responses;
 }
 
 // Function to send a request to the hub and receive a single response.
