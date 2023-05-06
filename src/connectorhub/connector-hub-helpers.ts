@@ -105,7 +105,7 @@ export function makeDeviceName(
   // Get the device model based on its type and sub-type.
   const deviceModel = getDeviceModel(type, subType);
   // Construct and return the final device name as '[model] [device_num]:[mac]'
-  return `${deviceModel} ${devNum.length ? devNum : '01'}:${macAddr}`;
+  return `${deviceModel} ${devNum.length ? devNum : '01'}-${macAddr}`;
 }
 
 // Estimate battery charge percentage from reported voltage.
