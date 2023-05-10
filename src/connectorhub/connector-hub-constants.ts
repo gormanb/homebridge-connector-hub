@@ -17,6 +17,12 @@ export enum OperationState {
   STOPPED = 2
 }
 
+// Used to determine the type of read request to send.
+export enum ReadDeviceType {
+  kPassive,  // Read cached values from the hub.
+  kActive    // Read real-time values from the device.
+}
+
 // Discrete commands that can be sent to the hub.
 export const opCodes =
     ['close', 'open', 'stop', undefined, undefined, 'status'];

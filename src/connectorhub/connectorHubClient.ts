@@ -7,6 +7,7 @@ import {Log} from '../util/log';
 
 import * as hubapi from './connector-hub-api';
 import * as consts from './connector-hub-constants';
+import {ReadDeviceType} from './connector-hub-constants';
 import * as helpers from './connector-hub-helpers';
 
 const kSocketTimeoutMs = 250;
@@ -87,7 +88,13 @@ export class ConnectorHubClient {
     return sendCommandMultiResponse(helpers.makeGetDeviceListRequest(), hubIp);
   }
 
-  public getDeviceState(): Promise<DeviceResponse> {
+  public getDeviceState(readType: ReadDeviceType): Promise<DeviceResponse> {
+    if (readType === ReadDeviceType.kActive) {
+      const activeReq = helpers.makeWriteDeviceRequest(
+          this.deviceInfo, this.accessToken,
+          {operation: hubapi.DeviceOpCode.kStatusQuery});
+      return sendCommand(activeReq, this.hubIp);
+    }
     return sendCommand(
         helpers.makeReadDeviceRequest(this.deviceInfo), this.hubIp);
   }

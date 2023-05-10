@@ -2,6 +2,7 @@
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
 import {DeviceInfo, ReadDeviceAck, WriteDeviceAck} from './connectorhub/connector-hub-api';
+import {ReadDeviceType} from './connectorhub/connector-hub-constants';
 import * as helpers from './connectorhub/connector-hub-helpers';
 import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
 import {ConnectorDeviceHandler} from './connectorhub/connectorDeviceHandler';
@@ -18,7 +19,13 @@ type WriteDeviceResponse = WriteDeviceAck|undefined;
  * WindowCovering and Battery services for the device.
  */
 export class ConnectorAccessory extends ConnectorDeviceHandler {
-  private static readonly kRefreshInterval = 5000;
+  // Intervals at which we passively and actively refresh the device state.
+  private static readonly kRefreshInterval = 5 * 1000;
+  private static readonly kActiveReadInterval = 60 * 1000;
+
+  // Number of passive reads per active read, based on the intervals above.
+  private static readonly kActiveReadRatio =
+      Math.round(this.kActiveReadInterval / this.kRefreshInterval);
 
   private client: ConnectorHubClient;
   private batteryService: Service;
@@ -33,6 +40,9 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
   // Does the device only support binary open / close?
   private usesBinaryState = false;
+
+  // When this counter is 0 mod kActiveReadRatio, perform an active read.
+  private passiveReadTicker = -1;
 
   constructor(
       private readonly platform: ConnectorHubPlatform,
@@ -120,8 +130,14 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
    * device state when a movement completes.
    */
   async updateDeviceStatus() {
+    // Determine whether to perform a passive or active read.
+    this.passiveReadTicker =
+        (++this.passiveReadTicker % ConnectorAccessory.kActiveReadRatio);
+
     // Obtain the latest status from the device.
-    const newState = <ReadDeviceResponse>(await this.client.getDeviceState());
+    const newState = <ReadDeviceResponse>(await this.client.getDeviceState(
+        this.passiveReadTicker ? ReadDeviceType.kPassive :
+                                 ReadDeviceType.kActive));
 
     // Update the cached current and last-good copies of the device status.
     this.lastState = (this.currentState || this.lastState);
