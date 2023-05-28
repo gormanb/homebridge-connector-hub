@@ -98,14 +98,16 @@ export function getDeviceModel(type: string, subType?: number): string {
 export function makeDeviceName(
     mac: string, type: string, subType?: number): string {
   // The format of a device's MAC is [hub_mac][device_num] where the former is a
-  // 12-character hex string and the latter is a 4-digit numeric string. If this
-  // is a WiFi motor which does not have a hub, device_num can be empty.
-  const [macAddr, devNum] =
-      [mac.slice(0, kMacAddrLength), mac.slice(kMacAddrLength + 2)];
+  // 12-character hex string and the latter is a 4-digit hex string. If this is
+  // a WiFi motor which does not have a hub, device_num can be empty.
+  const macAddr = mac.slice(0, kMacAddrLength);
+  const devNumHex = mac.slice(kMacAddrLength);
+  // Parse the hex devNum string into a decimal representation.
+  const devNum = parseInt(devNumHex || '0001', 16).toString().padStart(2, '0');
   // Get the device model based on its type and sub-type.
   const deviceModel = getDeviceModel(type, subType);
-  // Construct and return the final device name as '[model] [device_num]:[mac]'
-  return `${deviceModel} ${devNum.length ? devNum : '01'}-${macAddr}`;
+  // Construct and return the final device name as '[model] [device_num]-[mac]'
+  return `${deviceModel} ${devNum}-${macAddr}`;
 }
 
 // Estimate battery charge percentage from reported voltage.
