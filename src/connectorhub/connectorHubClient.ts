@@ -28,32 +28,31 @@ async function sendCommandMultiResponse(
 
   // Retry up to kMaxRetries times to overcome any transient network issues.
   for (let attempt = 0; attempt < kMaxRetries && !responses.length; ++attempt) {
-    // Create a socket to service this request.
-    const socket = DgramAsPromised.createSocket('udp4');
-
-    // Convert the command to a byte buffer of the string representation.
-    const sendMsg = Buffer.from(JSON.stringify(cmdObj));
-
     try {
-      // Send the message and wait for confirmation that it was sent.
+      // Create a socket to service this request.
+      const socket = DgramAsPromised.createSocket('udp4');
+
+      // Convert the command to a byte buffer of the string representation.
+      const sendMsg = Buffer.from(JSON.stringify(cmdObj));
+
+      // Send the message. We'll wait for confirmation that it was sent later.
       const sendResult = socket.send(sendMsg, consts.kSendPort, ip);
 
       // Holds the message parsed from the hub response.
-      let parsedMsg: DeviceResponse;
+      let response: DeviceResponse;
 
       do {
         // Set a maximum timeout for the request. If we get a response within
         // the timeout, clear the timeout for the next iteration.
         const timer = setTimeout(() => socket.close(), kSocketTimeoutMs);
-        const response = await sendResult && await socket.recv();
+        const recvMsg = await sendResult && await socket.recv();
         clearTimeout(timer);
 
         // Try to parse the response and add it to the list of responses.
-        parsedMsg = response && helpers.tryParse(response.msg.toString());
-        if (parsedMsg) {
-          responses.push(parsedMsg);
+        if ((response = recvMsg && helpers.tryParse(recvMsg.msg.toString()))) {
+          responses.push(response);
         }
-      } while (parsedMsg && !expectSingleResponse);
+      } while (response && !expectSingleResponse);
     } catch (ex: any) {
       Log.error('Network error:', ex.message);
     }
