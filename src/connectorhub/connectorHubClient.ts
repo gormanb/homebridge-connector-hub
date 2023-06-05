@@ -46,11 +46,15 @@ async function sendCommandMultiResponse(
         // the timeout, clear the timeout for the next iteration.
         const timer = setTimeout(() => socket.close(), kSocketTimeoutMs);
         const recvMsg = await sendResult && await socket.recv();
-        clearTimeout(timer);
 
         // Try to parse the response and add it to the list of responses.
         if ((response = recvMsg && helpers.tryParse(recvMsg.msg.toString()))) {
           responses.push(response);
+        }
+
+        // Clear the timeout if we still need to read from the socket.
+        if (response && !expectSingleResponse) {
+          clearTimeout(timer);
         }
       } while (response && !expectSingleResponse);
     } catch (ex: any) {
