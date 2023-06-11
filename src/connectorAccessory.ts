@@ -46,7 +46,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
   constructor(
       private readonly platform: ConnectorHubPlatform,
-      private readonly accessory: PlatformAccessory,
+      public readonly accessory: PlatformAccessory,
       private readonly hubIp: string,
       private readonly hubToken: string,
   ) {
