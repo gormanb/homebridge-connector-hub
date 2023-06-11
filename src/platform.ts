@@ -96,7 +96,10 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     for (const hubIp of this.config.hubIps) {
       this.scanHubOrWifiDevice(hubIp);
     }
-    this.removeStaleAccessories();
+    // Don't proactively remove stale accessories. There is a possibility that
+    // we could fail to discover all devices in time, and this would cause us to
+    // remove devices that are still active.
+    // this.removeStaleAccessories();
   }
 
   /**
