@@ -21,7 +21,7 @@ type WriteDeviceResponse = WriteDeviceAck|undefined;
 export class ConnectorAccessory extends ConnectorDeviceHandler {
   // Intervals at which we passively and actively refresh the device state.
   private static readonly kRefreshInterval = 5 * 1000;
-  private static readonly kActiveReadInterval = 60 * 1000;
+  private static readonly kActiveReadInterval = 60 * 60 * 1000;
 
   // Number of passive reads per active read, based on the intervals above.
   private static readonly kActiveReadRatio =
