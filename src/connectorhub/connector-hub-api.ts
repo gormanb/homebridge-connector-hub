@@ -16,7 +16,7 @@ export enum DeviceType {
   kWiFiReceiver = '22000005'
 }
 
-enum DeviceModel {
+export enum DeviceModel {
   kRollerBlinds = 1,
   kVenetianBlinds = 2,
   kRomanBlinds = 3,

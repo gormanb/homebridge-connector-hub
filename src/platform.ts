@@ -4,9 +4,9 @@ import {isIPv4} from 'net';
 
 import {ConnectorAccessory} from './connectorAccessory';
 import {doDiscovery} from './connectorhub/connector-device-discovery';
-import {DeviceType, GetDeviceListAck} from './connectorhub/connector-hub-api';
+import {DeviceModel, ReadDeviceAck} from './connectorhub/connector-hub-api';
 import * as consts from './connectorhub/connector-hub-constants';
-import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
+import {ExtendedDeviceInfo, makeDeviceName, TDBUType} from './connectorhub/connector-hub-helpers';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 import {Log} from './util/log';
 
@@ -101,23 +101,35 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
    * previously created accessories must not be registered again, to avoid
    * "duplicate UUID" errors.
    */
-  public registerDevices(hubIp: string, hubResponse: GetDeviceListAck) {
-    // Output the list of discovered devices in debug mode...
-    Log.debug('Discovered devices:', hubResponse);
+  public async registerDevice(
+      hubIp: string, deviceDetails: ReadDeviceAck, hubToken: string) {
+    // Output the discovered device if we're in debug mode.
+    Log.debug('Discovered device:', deviceDetails);
 
-    // ... and iterate over the discovered devices, registering each of them.
-    for (const discoveredDevice of hubResponse.data) {
-      // If this entry is the hub itself, skip over it and continue.
-      if (discoveredDevice.deviceType === DeviceType.kWiFiBridge) {
-        continue;
-      }
+    // For TDBU blinds, we have to create two separte accessories.
+    const tdbuTypes = deviceDetails.data.type === DeviceModel.kTopDownBottomUp ?
+        [TDBUType.kTopDown, TDBUType.kBottomUp] :
+        [TDBUType.kNone];
+
+    // Iterate over all TDBU types, if such types exist. Otherwise this will
+    // just register the plain single-motor device directly.
+    for (const tdbuType of tdbuTypes) {
       // Augment the basic device information with additional details.
-      const deviceInfo: ExtendedDeviceInfo =
-          Object.assign({fwVersion: hubResponse.fwVersion}, discoveredDevice);
+      const deviceInfo: ExtendedDeviceInfo = {
+        mac: deviceDetails.mac,
+        deviceType: deviceDetails.deviceType,
+        subType: deviceDetails.data.type,
+        tdbuType: tdbuType,
+        hubIp: hubIp,
+        hubToken: hubToken,
+      };
 
-      // Generate a unique id for the accessory from its MAC address.
-      const defaultDisplayName = `Connector Device ${deviceInfo.mac}`;
-      const uuid = this.api.hap.uuid.generate(deviceInfo.mac);
+      // Generate a unique id for the accessory from its MAC address. Append the
+      // TDBU type to differentiate the top down from the bottom up accessory.
+      const uuid = this.api.hap.uuid.generate(deviceInfo.mac + tdbuType);
+
+      // Generate a display name for the device from the extended device info.
+      const displayName = makeDeviceName(deviceInfo);
 
       // Check whether we have already registered this device in this session.
       if (this.accessoryHandlers.some(elem => elem.accessory.UUID === uuid)) {
@@ -130,8 +142,8 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
 
       // If the accessory does not yet exist, we need to create it.
       if (!accessory) {
-        Log.info('Adding new accessory:', defaultDisplayName);
-        accessory = new this.api.platformAccessory(defaultDisplayName, uuid);
+        Log.info('Adding new accessory:', displayName);
+        accessory = new this.api.platformAccessory(displayName, uuid);
         this.api.registerPlatformAccessories(
             PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       }
@@ -141,9 +153,8 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       this.api.updatePlatformAccessories([accessory]);
 
       // Create the accessory handler for this accessory.
-      Log.debug('Creating handler for accessory:', defaultDisplayName);
-      this.accessoryHandlers.push(
-          new ConnectorAccessory(this, accessory, hubIp, hubResponse.token));
+      Log.debug('Creating handler for accessory:', displayName);
+      this.accessoryHandlers.push(new ConnectorAccessory(this, accessory));
     }
   }
 }

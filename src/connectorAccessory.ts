@@ -1,7 +1,7 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
-import {DeviceInfo, ReadDeviceAck, WriteDeviceAck} from './connectorhub/connector-hub-api';
+import {ReadDeviceAck, WriteDeviceAck} from './connectorhub/connector-hub-api';
 import {ReadDeviceType} from './connectorhub/connector-hub-constants';
 import * as helpers from './connectorhub/connector-hub-helpers';
 import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
@@ -47,16 +47,14 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
   constructor(
       private readonly platform: ConnectorHubPlatform,
       public readonly accessory: PlatformAccessory,
-      private readonly hubIp: string,
-      private readonly hubToken: string,
   ) {
     // Initialize the superclass constructor.
-    super(<DeviceInfo>accessory.context.device);
+    super(<ExtendedDeviceInfo>accessory.context.device);
 
     // Create a new client connection for this device.
     this.client = new ConnectorHubClient(
-        this.platform.config, this.accessory.context.device, this.hubIp,
-        this.hubToken);
+        this.platform.config, this.deviceInfo, this.deviceInfo.hubIp,
+        this.deviceInfo.hubToken);
 
     // Get the WindowCovering service if it exists, otherwise create one.
     this.wcService =
@@ -91,12 +89,10 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
   // Update the device information displayed in Homekit. Only called once.
   setAccessoryInformation(deviceState: ReadDeviceAck) {
-    const deviceInfo: ExtendedDeviceInfo = this.accessory.context.device;
     const Characteristic = this.platform.Characteristic;
 
     // Update the accessory display name, in case it wasn't set already.
-    this.accessory.displayName = helpers.makeDeviceName(
-        deviceInfo.mac, deviceState.deviceType, deviceState.data.type);
+    this.accessory.displayName = helpers.makeDeviceName(this.deviceInfo);
     this.platform.api.updatePlatformAccessories([this.accessory]);
 
     // Set the service names. These are the default names displayed by Homekit.
@@ -109,9 +105,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
         .setCharacteristic(Characteristic.Name, this.accessory.displayName)
         .setCharacteristic(Characteristic.Manufacturer, 'Dooya')
-        .setCharacteristic(Characteristic.SerialNumber, deviceInfo.mac)
-        .setCharacteristic(
-            Characteristic.FirmwareRevision, deviceInfo.fwVersion)
+        .setCharacteristic(Characteristic.SerialNumber, this.deviceInfo.mac)
         .setCharacteristic(
             Characteristic.Model,
             helpers.getDeviceModel(

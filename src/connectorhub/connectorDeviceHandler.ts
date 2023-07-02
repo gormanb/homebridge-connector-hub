@@ -1,8 +1,9 @@
 /* eslint-disable indent */
 import {Log} from '../util/log';
 
-import {DeviceInfo, DeviceOpCode, DeviceType, ReadDeviceAck} from './connector-hub-api';
+import {DeviceOpCode, DeviceType, ReadDeviceAck} from './connector-hub-api';
 import {OperationState} from './connector-hub-constants';
+import {ExtendedDeviceInfo} from './connector-hub-helpers';
 
 /**
  * This class exposes methods for handling all conversions between Homekit and
@@ -14,7 +15,7 @@ export class ConnectorDeviceHandler {
   private kClosedValue = 100;
 
   constructor(
-      private readonly deviceInfo: DeviceInfo,
+      protected readonly deviceInfo: ExtendedDeviceInfo,
   ) {
     // Unlike hub devices, a WiFi curtain's position and target percentages are
     // the same as Homekit, and the inverse of other Connector devices.

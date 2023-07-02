@@ -17,9 +17,18 @@ import {kMacAddrLength} from './connector-hub-constants';
 // Special types used internally by the plugin.
 //
 
+export enum TDBUType {
+  kNone = '',
+  kTopDown = ' Top-Down',
+  kBottomUp = ' Bottom-Up'
+}
+
 // This augmented type is not part of the Hub API.
 export interface ExtendedDeviceInfo extends hubapi.DeviceInfo {
-  fwVersion: string;
+  subType: hubapi.DeviceModel;
+  tdbuType: TDBUType;
+  hubIp: string;
+  hubToken: string;
 }
 
 //
@@ -87,25 +96,30 @@ export function tryParse(jsonStr: string) {
 
 // The 'type' is the 'deviceType' field from the ReadDeviceAck response.
 // The 'subType' is the 'data.type' field from the ReadDeviceAck response.
-export function getDeviceModel(type: string, subType?: number): string {
+export function getDeviceModel(
+    type: string, subType?: number, tdbuType?: TDBUType): string {
   // For some devices, such as a Wifi curtain motor, there is no device subtype
   // and the model is determined by the type. For other devices, generally RF
   // motors connected to a hub, look up the device subtype.
-  return subType ? consts.deviceModels[subType] || 'Unidentified Device' :
-                   consts.deviceTypes[type];
+  const basicModel = subType ?
+      consts.deviceModels[subType] || 'Unidentified Device' :
+      consts.deviceTypes[type];
+
+  // Append the TDBU type to the model name.
+  return basicModel + tdbuType;
 }
 
-export function makeDeviceName(
-    mac: string, type: string, subType?: number): string {
+export function makeDeviceName(devInfo: ExtendedDeviceInfo): string {
   // The format of a device's MAC is [hub_mac][device_num] where the former is a
   // 12-character hex string and the latter is a 4-digit hex string. If this is
   // a WiFi motor which does not have a hub, device_num can be empty.
-  const macAddr = mac.slice(0, kMacAddrLength);
-  const devNumHex = mac.slice(kMacAddrLength);
+  const macAddr = devInfo.mac.slice(0, kMacAddrLength);
+  const devNumHex = devInfo.mac.slice(kMacAddrLength);
   // Parse the hex devNum string into a decimal representation.
   const devNum = parseInt(devNumHex || '0001', 16).toString().padStart(2, '0');
-  // Get the device model based on its type and sub-type.
-  const deviceModel = getDeviceModel(type, subType);
+  // Get the device model based on its type, sub-type, and TDBU type.
+  const deviceModel =
+      getDeviceModel(devInfo.deviceType, devInfo.subType, devInfo.tdbuType);
   // Construct and return the final device name as '[model] [device_num]-[mac]'
   return `${deviceModel} ${devNum}-${macAddr}`;
 }
