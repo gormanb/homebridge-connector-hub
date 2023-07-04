@@ -3,8 +3,8 @@ import {API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, P
 import {isIPv4} from 'net';
 
 import {ConnectorAccessory} from './connectorAccessory';
-import {doDiscovery} from './connectorhub/connector-device-discovery';
-import {DeviceModel, ReadDeviceAck} from './connectorhub/connector-hub-api';
+import {doDiscovery, identifyTdbuDevices} from './connectorhub/connector-device-discovery';
+import {ReadDeviceAck} from './connectorhub/connector-hub-api';
 import * as consts from './connectorhub/connector-hub-constants';
 import {ExtendedDeviceInfo, makeDeviceName, TDBUType} from './connectorhub/connector-hub-helpers';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
@@ -106,10 +106,8 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     // Output the discovered device if we're in debug mode.
     Log.debug('Discovered device:', deviceDetails);
 
-    // For TDBU blinds, we have to create two separte accessories.
-    const tdbuTypes = deviceDetails.data.type === DeviceModel.kTopDownBottomUp ?
-        [TDBUType.kTopDown, TDBUType.kBottomUp] :
-        [TDBUType.kNone];
+    // If this is a TDBU blind, we may have to create two separate accessories.
+    const tdbuTypes: TDBUType[] = identifyTdbuDevices(deviceDetails);
 
     // Iterate over all TDBU types, if such types exist. Otherwise this will
     // just register the plain single-motor device directly.

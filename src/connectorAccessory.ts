@@ -145,7 +145,8 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
     // Determine whether the device only reports binary open / closed state,
     // then sanitize the status object to conform to the expected format.
-    this.usesBinaryState = (newState.data.currentPosition === undefined);
+    this.usesBinaryState =
+        (this.extractCurrentPosition(newState) === undefined);
     this.currentState = this.sanitizeDeviceState(newState);
 
     // The first time we read the device, we update the accessory details.

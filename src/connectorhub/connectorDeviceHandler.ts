@@ -3,7 +3,7 @@ import {Log} from '../util/log';
 
 import {DeviceOpCode, DeviceType, ReadDeviceAck} from './connector-hub-api';
 import {OperationState} from './connector-hub-constants';
-import {ExtendedDeviceInfo} from './connector-hub-helpers';
+import {ExtendedDeviceInfo, TDBUType} from './connector-hub-helpers';
 
 /**
  * This class exposes methods for handling all conversions between Homekit and
@@ -14,6 +14,13 @@ export class ConnectorDeviceHandler {
   // By default, a value of 100 is fully closed for connector blinds.
   private kClosedValue = 100;
 
+  private fields = {
+    currentPosition: 'currentPosition',
+    currentState: 'currentState',
+    batteryLevel: 'batteryLevel',
+    operation: 'operation',
+  };
+
   constructor(
       protected readonly deviceInfo: ExtendedDeviceInfo,
   ) {
@@ -22,6 +29,29 @@ export class ConnectorDeviceHandler {
     if (deviceInfo.deviceType === DeviceType.kWiFiCurtain) {
       this.kClosedValue = 0;
     }
+    // Update the field names used in the device data if this is a TDBU blind.
+    if (deviceInfo.tdbuType !== TDBUType.kNone) {
+      const suffix = (deviceInfo.tdbuType === TDBUType.kTopDown ? '_T' : '_B');
+      for (const field in this.fields) {
+        this.fields[field] = `${this.fields[field]}${suffix}`;
+      }
+    }
+  }
+
+  protected extractCurrentPosition(deviceState: ReadDeviceAck) {
+    return deviceState.data[this.fields.currentPosition];
+  }
+
+  protected extractCurrentState(deviceState: ReadDeviceAck) {
+    return deviceState.data[this.fields.currentState];
+  }
+
+  protected extractBatteryLevel(deviceState: ReadDeviceAck) {
+    return deviceState.data[this.fields.batteryLevel];
+  }
+
+  protected extractOperation(deviceState: ReadDeviceAck) {
+    return deviceState.data[this.fields.operation];
   }
 
   // Convert a percentage position into a binary open / closed state. Note that
@@ -53,6 +83,10 @@ export class ConnectorDeviceHandler {
   // Helper function which ensures that the device state received from the hub
   // is in the format expected by the plugin. Mutates and returns the input.
   public sanitizeDeviceState(deviceState: ReadDeviceAck) {
+    // Convert a TDBU reading into a generic device reading.
+    for (const field in this.fields) {
+      deviceState.data[field] = deviceState.data[this.fields[field]];
+    }
     // Depending on the device type, the hub may return an explicit position or
     // a simple open / closed state. In the former case, don't change anything.
     if (deviceState.data.currentPosition !== undefined) {

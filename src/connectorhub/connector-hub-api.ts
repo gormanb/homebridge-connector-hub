@@ -87,9 +87,8 @@ interface DeviceStatus {
   RSSI: number;
 }
 
-// Not used at present, since Homekit does not support TDBU blinds.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface DeviceStatusTDBU extends DeviceStatus {
+// Extended DeviceStatus for TDBU blinds.
+export interface DeviceStatusTDBU extends DeviceStatus {
   operation_T: DeviceOpCode;
   operation_B: DeviceOpCode;
   currentPosition_T: number;

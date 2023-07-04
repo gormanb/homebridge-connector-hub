@@ -4,9 +4,9 @@ import * as dgram from 'dgram';
 import {ConnectorHubPlatform} from '../platform';
 import {Log} from '../util/log';
 
-import {DeviceType, GetDeviceListAck} from './connector-hub-api';
+import {DeviceModel, DeviceStatusTDBU, DeviceType, GetDeviceListAck, ReadDeviceAck} from './connector-hub-api';
 import {kSendPort} from './connector-hub-constants';
-import {makeGetDeviceListRequest, makeReadDeviceRequest, tryParse} from './connector-hub-helpers';
+import {makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
 
 // These constants determine how long each discovery period lasts for, and how
 // often we send GetDeviceList requests during that period.
@@ -69,4 +69,23 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
       setTimeout(() => doDiscovery(hubIp, platform), kDiscoveryIntervalMs);
     }
   }, kDiscoveryFrequencyMs);
+}
+
+// Function which returns an array of information about a possibly-TDBU device.
+//   - If this is a TDBU device and has a _T field, add kTopDown to the array.
+//   - If this is a TDBU device and has a _B field, add kBottomUp to the array.
+//   - If this is not a TDBU device, returns [kNone].
+export function identifyTdbuDevices(deviceInfo: ReadDeviceAck): TDBUType[] {
+  if (deviceInfo.data.type !== DeviceModel.kTopDownBottomUp) {
+    return [TDBUType.kNone];
+  }
+  const tdbuDevInfo = <DeviceStatusTDBU>(deviceInfo.data);
+  const tdbuTypes: TDBUType[] = [];
+  if (tdbuDevInfo.operation_T) {
+    tdbuTypes.push(TDBUType.kTopDown);
+  }
+  if (tdbuDevInfo.operation_B) {
+    tdbuTypes.push(TDBUType.kBottomUp);
+  }
+  return tdbuTypes;
 }
