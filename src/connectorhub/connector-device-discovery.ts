@@ -81,10 +81,10 @@ export function identifyTdbuDevices(deviceInfo: ReadDeviceAck): TDBUType[] {
   }
   const tdbuDevInfo = <DeviceStatusTDBU>(deviceInfo.data);
   const tdbuTypes: TDBUType[] = [];
-  if (tdbuDevInfo.operation_T) {
+  if (tdbuDevInfo.operation_T !== undefined) {
     tdbuTypes.push(TDBUType.kTopDown);
   }
-  if (tdbuDevInfo.operation_B) {
+  if (tdbuDevInfo.operation_B !== undefined) {
     tdbuTypes.push(TDBUType.kBottomUp);
   }
   return tdbuTypes;
