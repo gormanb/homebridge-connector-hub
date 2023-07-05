@@ -102,21 +102,21 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
    * "duplicate UUID" errors.
    */
   public async registerDevice(
-      hubIp: string, deviceDetails: ReadDeviceAck, hubToken: string) {
+      hubIp: string, deviceState: ReadDeviceAck, hubToken: string) {
     // Output the discovered device if we're in debug mode.
-    Log.debug('Discovered device:', deviceDetails);
+    Log.debug('Discovered device:', deviceState);
 
     // If this is a TDBU blind, we may have to create two separate accessories.
-    const tdbuTypes: TDBUType[] = identifyTdbuDevices(deviceDetails);
+    const tdbuTypes: TDBUType[] = identifyTdbuDevices(deviceState);
 
     // Iterate over all TDBU types, if such types exist. Otherwise this will
     // just register the plain single-motor device directly.
     for (const tdbuType of tdbuTypes) {
       // Augment the basic device information with additional details.
       const deviceInfo: ExtendedDeviceInfo = {
-        mac: deviceDetails.mac,
-        deviceType: deviceDetails.deviceType,
-        subType: deviceDetails.data.type,
+        mac: deviceState.mac,
+        deviceType: deviceState.deviceType,
+        subType: deviceState.data.type,
         tdbuType: tdbuType,
         hubIp: hubIp,
         hubToken: hubToken,

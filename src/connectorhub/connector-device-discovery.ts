@@ -75,11 +75,11 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
 //   - If this is a TDBU device and has a _T field, add kTopDown to the array.
 //   - If this is a TDBU device and has a _B field, add kBottomUp to the array.
 //   - If this is not a TDBU device, returns [kNone].
-export function identifyTdbuDevices(deviceInfo: ReadDeviceAck): TDBUType[] {
-  if (deviceInfo.data.type !== DeviceModel.kTopDownBottomUp) {
+export function identifyTdbuDevices(deviceState: ReadDeviceAck): TDBUType[] {
+  if (deviceState.data.type !== DeviceModel.kTopDownBottomUp) {
     return [TDBUType.kNone];
   }
-  const tdbuDevInfo = <DeviceStatusTDBU>(deviceInfo.data);
+  const tdbuDevInfo = <DeviceStatusTDBU>(deviceState.data);
   const tdbuTypes: TDBUType[] = [];
   if (tdbuDevInfo.operation_T !== undefined) {
     tdbuTypes.push(TDBUType.kTopDown);

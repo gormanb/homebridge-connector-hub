@@ -14,6 +14,8 @@ export class ConnectorDeviceHandler {
   // By default, a value of 100 is fully closed for connector blinds.
   private kClosedValue = 100;
 
+  // Map of canonical field names to their (variable) effective field names. For
+  // a TDBU device, these fields will be suffixed with _T or _B.
   private fields = {
     currentPosition: 'currentPosition',
     currentState: 'currentState',
