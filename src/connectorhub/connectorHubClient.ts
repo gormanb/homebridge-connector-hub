@@ -114,7 +114,7 @@ export class ConnectorHubClient {
     return this.setDeviceState({targetAngle: angle});
   }
 
-  private setDeviceState(command: hubapi.DeviceCmd): Promise<DeviceResponse> {
+  public setDeviceState(command: hubapi.DeviceCmd): Promise<DeviceResponse> {
     const request = helpers.makeWriteDeviceRequest(
         this.deviceInfo, this.accessToken, command);
     return sendCommand(request, this.hubIp);

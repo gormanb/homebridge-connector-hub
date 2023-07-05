@@ -231,17 +231,19 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
       // If the device expects a binary open/close state, send a command.
       if (this.usesBinaryState) {
         adjustedTarget = this.binarizeTargetPosition(adjustedTarget);
-        return this.client.setOpenCloseState(
-            this.positionToOpCode(adjustedTarget));
+        return this.client.setDeviceState(
+            this.makeOpenCloseRequest(adjustedTarget));
       }
       // Otherwise, send a specific target position percentage value.
-      return this.client.setTargetPosition(adjustedTarget);
+      return this.client.setDeviceState(
+          this.makeTargetPositionRequest(adjustedTarget));
     })();
 
     // Check whether the ack we received is valid for the request we sent.
     const invalidAck = ack &&
         (!ack.data ||
-         (!this.usesBinaryState && ack.data.currentPosition === undefined));
+         (!this.usesBinaryState &&
+          this.extractCurrentPosition(ack) === undefined));
 
     // If we didn't receive an ack, or if the ack reports an exception from the
     // hub, or if the ack is invalid, throw a communications error to Homekit.

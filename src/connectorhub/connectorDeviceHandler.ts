@@ -1,7 +1,7 @@
 /* eslint-disable indent */
 import {Log} from '../util/log';
 
-import {DeviceOpCode, DeviceType, ReadDeviceAck} from './connector-hub-api';
+import {DeviceOpCode, DeviceType, ReadDeviceAck, WriteDeviceAck} from './connector-hub-api';
 import {OperationState} from './connector-hub-constants';
 import {ExtendedDeviceInfo, TDBUType} from './connector-hub-helpers';
 
@@ -19,6 +19,9 @@ export class ConnectorDeviceHandler {
   private fields = {
     currentPosition: 'currentPosition',
     currentState: 'currentState',
+    currentAngle: 'currentAngle',
+    targetPosition: 'targetPosition',
+    targetAngle: 'targetAngle',
     batteryLevel: 'batteryLevel',
     operation: 'operation',
   };
@@ -40,20 +43,16 @@ export class ConnectorDeviceHandler {
     }
   }
 
-  protected extractCurrentPosition(deviceState: ReadDeviceAck) {
+  protected extractCurrentPosition(deviceState: ReadDeviceAck|WriteDeviceAck) {
     return deviceState.data[this.fields.currentPosition];
   }
 
-  protected extractCurrentState(deviceState: ReadDeviceAck) {
-    return deviceState.data[this.fields.currentState];
+  protected makeOpenCloseRequest(binarizedTarget: number) {
+    return {[this.fields.operation]: this.positionToOpCode(binarizedTarget)};
   }
 
-  protected extractBatteryLevel(deviceState: ReadDeviceAck) {
-    return deviceState.data[this.fields.batteryLevel];
-  }
-
-  protected extractOperation(deviceState: ReadDeviceAck) {
-    return deviceState.data[this.fields.operation];
+  protected makeTargetPositionRequest(target: number) {
+    return {[this.fields.targetPosition]: target};
   }
 
   // Convert a percentage position into a binary open / closed state. Note that
