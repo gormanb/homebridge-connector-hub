@@ -14,6 +14,9 @@ export class ConnectorDeviceHandler {
   // By default, a value of 100 is fully closed for connector blinds.
   private kClosedValue = 100;
 
+  // Does the device only support binary open / close?
+  protected usesBinaryState = false;
+
   // Map of canonical field names to their (variable) effective field names. For
   // a TDBU device, these fields will be suffixed with _T or _B.
   private fields = {
@@ -81,10 +84,26 @@ export class ConnectorDeviceHandler {
     return this.kClosedValue === 100 ? this.invertPC(percent) : percent;
   }
 
+  // Determine whether this device uses binary open/close commands, by checking
+  // whether the currentPosition percentage field is absent.
+  private checkUsesBinaryState(deviceState: ReadDeviceAck): boolean {
+    // Need to check all possible variants since TDBU blinds sometimes report
+    // the state of only one of their components.
+    const currentPosFields =
+        ['currentPosition', 'currentPosition_T', 'currentPosition_B'];
+    return currentPosFields.every(
+        (fieldName) => deviceState.data[fieldName] === undefined);
+  }
+
   // Helper function which ensures that the device state received from the hub
   // is in the format expected by the plugin. Mutates and returns the input.
   public sanitizeDeviceState(
       deviceState: ReadDeviceAck, lastState?: ReadDeviceAck) {
+    // Determine whether the device only reports binary open / closed state,
+    // then sanitize the status object to conform to the expected format.
+    this.usesBinaryState =
+        this.usesBinaryState || this.checkUsesBinaryState(deviceState);
+
     // Convert a TDBU reading into a generic device reading.
     for (const field in this.fields) {
       if (deviceState.data[this.fields[field]] !== undefined) {

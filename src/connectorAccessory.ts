@@ -38,9 +38,6 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
   // Current target position for this device.
   private currentTargetPos = -1;
 
-  // Does the device only support binary open / close?
-  private usesBinaryState = false;
-
   // When this counter is 0 mod kActiveReadRatio, perform an active read.
   private passiveReadTicker = -1;
 
@@ -143,10 +140,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
       return;
     }
 
-    // Determine whether the device only reports binary open / closed state,
-    // then sanitize the status object to conform to the expected format.
-    this.usesBinaryState =
-        (this.extractCurrentPosition(newState) === undefined);
+    // Sanitize the device state for the specific device that we are handling.
     this.currentState = newState =
         this.sanitizeDeviceState(newState, this.lastState);
 
