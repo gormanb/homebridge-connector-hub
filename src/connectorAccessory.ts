@@ -209,27 +209,17 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
    * if the hub cannot be contacted.
    */
   async setTargetPosition(targetVal: CharacteristicValue) {
-    // Convert from Homekit position to the equivalent Connector value.
-    let adjustedTarget = this.fromHomekitPercent(<number>targetVal);
+    // Adjust the target value from Homekit to Hub values, and construct a
+    // target request appropriate to this device.
+    const [hubTarget, targetReq] = this.makeTargetRequest(<number>targetVal);
 
     // Send the targeting request in the appropriate format for this device.
     const ack = <WriteDeviceResponse>await (() => {
-      // If the device expects a binary open/close state, send a command.
-      if (this.usesBinaryState()) {
-        adjustedTarget = this.binarizeTargetPosition(adjustedTarget);
-        return this.client.setDeviceState(
-            this.makeOpenCloseRequest(adjustedTarget));
-      }
-      // Otherwise, send a specific target position percentage value.
-      return this.client.setDeviceState(
-          this.makeTargetPositionRequest(adjustedTarget));
+      return this.client.setDeviceState(targetReq);
     })();
 
     // Check whether the ack we received is valid for the request we sent.
-    const invalidAck = ack &&
-        (!ack.data ||
-         (!this.usesBinaryState &&
-          this.extractCurrentPosition(ack) === undefined));
+    const invalidAck = this.isInvalidTargetAck(ack);
 
     // If we didn't receive an ack, or if the ack reports an exception from the
     // hub, or if the ack is invalid, throw a communications error to Homekit.
@@ -242,7 +232,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     }
 
     // Record the current targeted position, and inform Homekit.
-    this.currentTargetPos = adjustedTarget;
+    this.currentTargetPos = hubTarget;
     this.updateWindowCoveringService();
 
     // Log the result of the operation for the user.

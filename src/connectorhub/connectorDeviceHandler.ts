@@ -1,7 +1,7 @@
 /* eslint-disable indent */
 import {Log} from '../util/log';
 
-import {DeviceOpCode, DeviceType, ReadDeviceAck, WirelessMode, WriteDeviceAck} from './connector-hub-api';
+import {DeviceCmd, DeviceOpCode, DeviceType, ReadDeviceAck, WirelessMode, WriteDeviceAck} from './connector-hub-api';
 import {OperationState} from './connector-hub-constants';
 import {ExtendedDeviceInfo, TDBUType} from './connector-hub-helpers';
 
@@ -51,27 +51,50 @@ export class ConnectorDeviceHandler {
     }
   }
 
-  protected extractCurrentPosition(deviceState: ReadDeviceAck|WriteDeviceAck) {
-    return deviceState.data[this.fields.currentPosition];
+  // Return an array containing the Hub target corresponding to the input
+  // Homekit value, and a command to implement the targeting request.
+  protected makeTargetRequest(homekitTarget: number):
+      [hubTarget: number, targetRequest: DeviceCmd] {
+    const hubTarget = this.fromHomekitPercent(homekitTarget);
+    if (this.usesBinaryState()) {
+      return [
+        this.binarizeTargetPosition(hubTarget),
+        this.makeOpenCloseRequest(hubTarget),
+      ];
+    }
+    return [hubTarget, this.makeTargetPositionRequest(hubTarget)];
   }
 
-  protected makeOpenCloseRequest(binarizedTarget: number) {
-    return {[this.fields.operation]: this.positionToOpCode(binarizedTarget)};
+  // Check whether a targeting request response is invalid.
+  protected isInvalidTargetAck(ack: WriteDeviceResponse) {
+    return ack &&
+        (!ack.data ||
+         (!this.usesBinaryState() &&
+          ack.data[this.fields.currentPosition] === undefined));
   }
 
-  protected makeTargetPositionRequest(target: number) {
-    return {[this.fields.targetPosition]: target};
+  // Given a hub target value, constructs a binary open/close request.
+  private makeOpenCloseRequest(hubTarget: number) {
+    return {
+      [this.fields.operation]:
+          this.positionToOpCode(this.binarizeTargetPosition(hubTarget)),
+    };
+  }
+
+  // Given a hub target value, constructs a percentage targeting request.
+  private makeTargetPositionRequest(hubTarget: number) {
+    return {[this.fields.targetPosition]: hubTarget};
   }
 
   // Convert a percentage position into a binary open / closed state. Note that
   // the input is a Connector hub position, not an inverted Homekit position.
-  public positionToOpCode(position: number): DeviceOpCode {
-    return Math.abs(this.kClosedValue - position) < 50 ? DeviceOpCode.kClose :
-                                                         DeviceOpCode.kOpen;
+  private positionToOpCode(hubPos: number): DeviceOpCode {
+    return Math.abs(this.kClosedValue - hubPos) < 50 ? DeviceOpCode.kClose :
+                                                       DeviceOpCode.kOpen;
   }
 
   // Given a kOpen or kClose opcode, return the equivalent position.
-  public opCodeToPosition(opCode: DeviceOpCode): number {
+  private opCodeToPosition(opCode: DeviceOpCode): number {
     return opCode === DeviceOpCode.kClose ? this.kClosedValue :
                                             this.invertPC(this.kClosedValue);
   }
@@ -81,23 +104,23 @@ export class ConnectorDeviceHandler {
     return (100 - percent);
   }
 
-  public toHomekitPercent(percent: number): number {
-    return this.kClosedValue === 100 ? this.invertPC(percent) : percent;
+  public toHomekitPercent(hubPC: number): number {
+    return this.kClosedValue === 100 ? this.invertPC(hubPC) : hubPC;
   }
 
-  public fromHomekitPercent(percent: number): number {
-    return this.kClosedValue === 100 ? this.invertPC(percent) : percent;
+  private fromHomekitPercent(homekitPC: number): number {
+    return this.kClosedValue === 100 ? this.invertPC(homekitPC) : homekitPC;
   }
 
   // Determine whether this device uses binary open/close commands.
-  public usesBinaryState() {
+  private usesBinaryState() {
     return this.lastState &&
         this.lastState.data.wirelessMode === WirelessMode.kUniDirectional;
   }
 
   // Helper function which ensures that the device state received from the hub
   // is in the format expected by the plugin. Mutates and returns the input.
-  public sanitizeDeviceState(deviceState: ReadDeviceAck) {
+  protected sanitizeDeviceState(deviceState: ReadDeviceAck) {
     // Convert a TDBU reading into a generic device reading.
     for (const field in this.fields) {
       if (deviceState.data[this.fields[field]] !== undefined) {
@@ -128,15 +151,15 @@ export class ConnectorDeviceHandler {
   // Homekit may set a percentage position for a device that only supports
   // binary open and close. This function is used to handle this scenario. Note
   // that the input targetPos is a Connector hub position.
-  public binarizeTargetPosition(targetPos: number): number {
-    return targetPos >= 50 ? 100 : 0;
+  private binarizeTargetPosition(hubTarget: number): number {
+    return hubTarget >= 50 ? 100 : 0;
   }
 
   // Determines the direction in which the window covering is moving, given
   // current position and target.
-  public getDirection(pos: number, target: number): number {
-    const targetOffset = Math.abs(this.kClosedValue - target);
-    const posOffset = Math.abs(this.kClosedValue - pos);
+  public getDirection(hubPos: number, hubTarget: number): number {
+    const targetOffset = Math.abs(this.kClosedValue - hubTarget);
+    const posOffset = Math.abs(this.kClosedValue - hubPos);
     return posOffset < targetOffset ?
         OperationState.OPEN_OPENING :
         (posOffset > targetOffset ? OperationState.CLOSED_CLOSING :
