@@ -83,11 +83,17 @@ export class ConnectorDeviceHandler {
 
   // Helper function which ensures that the device state received from the hub
   // is in the format expected by the plugin. Mutates and returns the input.
-  public sanitizeDeviceState(deviceState: ReadDeviceAck) {
+  public sanitizeDeviceState(
+      deviceState: ReadDeviceAck, lastState?: ReadDeviceAck) {
     // Convert a TDBU reading into a generic device reading.
     for (const field in this.fields) {
-      deviceState.data[field] = deviceState.data[this.fields[field]];
+      if (deviceState.data[this.fields[field]] !== undefined) {
+        deviceState.data[field] = deviceState.data[this.fields[field]];
+      }
     }
+    // Merge the new state into the previous state. Important for devices which
+    // may report only partial state on each refresh, e.g. TDBU blinds.
+    deviceState = Object.assign({}, lastState, deviceState);
     // Depending on the device type, the hub may return an explicit position or
     // a simple open / closed state. In the former case, don't change anything.
     if (deviceState.data.currentPosition !== undefined) {

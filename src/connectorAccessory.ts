@@ -129,7 +129,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
         (++this.passiveReadTicker % ConnectorAccessory.kActiveReadRatio);
 
     // Obtain the latest status from the device.
-    const newState = <ReadDeviceResponse>(await this.client.getDeviceState(
+    let newState = <ReadDeviceResponse>(await this.client.getDeviceState(
         this.passiveReadTicker ? ReadDeviceType.kPassive :
                                  ReadDeviceType.kActive));
 
@@ -147,7 +147,8 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     // then sanitize the status object to conform to the expected format.
     this.usesBinaryState =
         (this.extractCurrentPosition(newState) === undefined);
-    this.currentState = this.sanitizeDeviceState(newState);
+    this.currentState = newState =
+        this.sanitizeDeviceState(newState, this.lastState);
 
     // The first time we read the device, we update the accessory details.
     if (!this.lastState) {
