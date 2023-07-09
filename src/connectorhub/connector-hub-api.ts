@@ -58,7 +58,7 @@ enum ChargingState {
   kNotChargeable = 2
 }
 
-enum WirelessMode {
+export enum WirelessMode {
   kUniDirectional = 0,
   kBiDirectional = 1,
   kBiDiWithMechanicalLimits = 2,

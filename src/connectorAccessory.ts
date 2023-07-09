@@ -1,18 +1,14 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
-import {ReadDeviceAck, WriteDeviceAck} from './connectorhub/connector-hub-api';
+import {ReadDeviceAck} from './connectorhub/connector-hub-api';
 import {ReadDeviceType} from './connectorhub/connector-hub-constants';
 import * as helpers from './connectorhub/connector-hub-helpers';
 import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
-import {ConnectorDeviceHandler} from './connectorhub/connectorDeviceHandler';
+import {ConnectorDeviceHandler, ReadDeviceResponse, WriteDeviceResponse} from './connectorhub/connectorDeviceHandler';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
 import {Log} from './util/log';
-
-// Response types we expect for device status. Undefined if no response.
-type ReadDeviceResponse = ReadDeviceAck|undefined;
-type WriteDeviceResponse = WriteDeviceAck|undefined;
 
 /**
  * An instance of this class is created for each accessory. Exposes both the
@@ -30,10 +26,6 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
   private client: ConnectorHubClient;
   private batteryService: Service;
   private wcService: Service;
-
-  // Cached device status, updated periodically.
-  private currentState: ReadDeviceResponse;
-  private lastState: ReadDeviceResponse;
 
   // Current target position for this device.
   private currentTargetPos = -1;
@@ -141,8 +133,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     }
 
     // Sanitize the device state for the specific device that we are handling.
-    this.currentState = newState =
-        this.sanitizeDeviceState(newState, this.lastState);
+    this.currentState = newState = this.sanitizeDeviceState(newState);
 
     // The first time we read the device, we update the accessory details.
     if (!this.lastState) {
@@ -224,7 +215,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     // Send the targeting request in the appropriate format for this device.
     const ack = <WriteDeviceResponse>await (() => {
       // If the device expects a binary open/close state, send a command.
-      if (this.usesBinaryState) {
+      if (this.usesBinaryState()) {
         adjustedTarget = this.binarizeTargetPosition(adjustedTarget);
         return this.client.setDeviceState(
             this.makeOpenCloseRequest(adjustedTarget));

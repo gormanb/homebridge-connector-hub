@@ -4,7 +4,7 @@ import * as dgram from 'dgram';
 import {ConnectorHubPlatform} from '../platform';
 import {Log} from '../util/log';
 
-import {DeviceModel, DeviceStatusTDBU, DeviceType, GetDeviceListAck, ReadDeviceAck} from './connector-hub-api';
+import {DeviceModel, DeviceType, GetDeviceListAck, ReadDeviceAck} from './connector-hub-api';
 import {kSendPort} from './connector-hub-constants';
 import {makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
 

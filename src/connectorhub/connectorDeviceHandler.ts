@@ -1,9 +1,13 @@
 /* eslint-disable indent */
 import {Log} from '../util/log';
 
-import {DeviceOpCode, DeviceType, ReadDeviceAck, WriteDeviceAck} from './connector-hub-api';
+import {DeviceOpCode, DeviceType, ReadDeviceAck, WirelessMode, WriteDeviceAck} from './connector-hub-api';
 import {OperationState} from './connector-hub-constants';
 import {ExtendedDeviceInfo, TDBUType} from './connector-hub-helpers';
+
+// Response types we expect for device status. Undefined if no response.
+export type ReadDeviceResponse = ReadDeviceAck|undefined;
+export type WriteDeviceResponse = WriteDeviceAck|undefined;
 
 /**
  * This class exposes methods for handling all conversions between Homekit and
@@ -11,11 +15,12 @@ import {ExtendedDeviceInfo, TDBUType} from './connector-hub-helpers';
  * of Homekit values, but in certain cases this does not hold true.
  */
 export class ConnectorDeviceHandler {
+  // Cached device status, updated periodically.
+  protected currentState: ReadDeviceResponse;
+  protected lastState: ReadDeviceResponse;
+
   // By default, a value of 100 is fully closed for connector blinds.
   private kClosedValue = 100;
-
-  // Does the device only support binary open / close?
-  protected usesBinaryState = false;
 
   // Map of canonical field names to their (variable) effective field names. For
   // a TDBU device, these fields will be suffixed with _T or _B.
@@ -84,26 +89,15 @@ export class ConnectorDeviceHandler {
     return this.kClosedValue === 100 ? this.invertPC(percent) : percent;
   }
 
-  // Determine whether this device uses binary open/close commands, by checking
-  // whether the currentPosition percentage field is absent.
-  private checkUsesBinaryState(deviceState: ReadDeviceAck): boolean {
-    // Need to check all possible variants since TDBU blinds sometimes report
-    // the state of only one of their components.
-    const currentPosFields =
-        ['currentPosition', 'currentPosition_T', 'currentPosition_B'];
-    return currentPosFields.every(
-        (fieldName) => deviceState.data[fieldName] === undefined);
+  // Determine whether this device uses binary open/close commands.
+  public usesBinaryState() {
+    return this.lastState &&
+        this.lastState.data.wirelessMode === WirelessMode.kUniDirectional;
   }
 
   // Helper function which ensures that the device state received from the hub
   // is in the format expected by the plugin. Mutates and returns the input.
-  public sanitizeDeviceState(
-      deviceState: ReadDeviceAck, lastState?: ReadDeviceAck) {
-    // Determine whether the device only reports binary open / closed state,
-    // then sanitize the status object to conform to the expected format.
-    this.usesBinaryState =
-        this.usesBinaryState || this.checkUsesBinaryState(deviceState);
-
+  public sanitizeDeviceState(deviceState: ReadDeviceAck) {
     // Convert a TDBU reading into a generic device reading.
     for (const field in this.fields) {
       if (deviceState.data[this.fields[field]] !== undefined) {
@@ -112,7 +106,7 @@ export class ConnectorDeviceHandler {
     }
     // Merge the new state into the previous state. Important for devices which
     // may report only partial state on each refresh, e.g. TDBU blinds.
-    deviceState = Object.assign({}, lastState, deviceState);
+    deviceState = Object.assign({}, this.lastState, deviceState);
     // Depending on the device type, the hub may return an explicit position or
     // a simple open / closed state. In the former case, don't change anything.
     if (deviceState.data.currentPosition !== undefined) {
