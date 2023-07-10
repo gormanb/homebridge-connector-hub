@@ -114,8 +114,8 @@ export class ConnectorDeviceHandler {
 
   // Determine whether this device uses binary open/close commands.
   private usesBinaryState() {
-    return this.lastState &&
-        this.lastState.data.wirelessMode === WirelessMode.kUniDirectional;
+    return (this.currentState || this.lastState)?.data.wirelessMode ===
+        WirelessMode.kUniDirectional;
   }
 
   // Helper function which ensures that the device state received from the hub
@@ -129,7 +129,8 @@ export class ConnectorDeviceHandler {
     }
     // Merge the new state into the previous state. Important for devices which
     // may report only partial state on each refresh, e.g. TDBU blinds.
-    deviceState = Object.assign({}, this.lastState, deviceState);
+    deviceState.data =
+        Object.assign({}, this.lastState?.data, deviceState.data);
     // Depending on the device type, the hub may return an explicit position or
     // a simple open / closed state. In the former case, don't change anything.
     if (deviceState.data.currentPosition !== undefined) {
