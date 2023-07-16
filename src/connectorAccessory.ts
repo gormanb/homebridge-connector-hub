@@ -132,6 +132,9 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
       return;
     }
 
+    // Log a debug message showing the new device state received from the hub.
+    Log.debug(`Updated ${this.accessory.displayName} state:`, newState);
+
     // Sanitize the device state for the specific device that we are handling.
     this.currentState = newState = this.sanitizeDeviceState(newState);
 
@@ -144,9 +147,8 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     // first iteration, so we wish to force an update.
     const lastPos = (this.lastState && this.lastState.data.currentPosition);
     if (newState.data.currentPosition !== lastPos) {
-      // Log a message for the user, with additional information in debug mode.
+      // Log a message for the user to signify that the position has changed.
       const newPos = this.toHomekitPercent(newState.data.currentPosition);
-      Log.debug(`Updated ${this.accessory.displayName} state:`, newState);
       Log.info('Updating position:', [this.accessory.displayName, newPos]);
 
       // The hub updates only after completing each movement. Update the target
