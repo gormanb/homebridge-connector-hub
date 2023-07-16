@@ -265,8 +265,6 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
-    // Log the current state of the device if we are in debug mode.
-    Log.debug(`${this.accessory.displayName} state:`, this.currentState);
     // Position is cached in Connector hub format, convert to Homekit format.
     const currentPos =
         this.toHomekitPercent(this.currentState.data.currentPosition);
