@@ -38,8 +38,10 @@ export class ConnectorDeviceHandler {
       protected readonly deviceInfo: ExtendedDeviceInfo,
   ) {
     // Unlike hub devices, a WiFi curtain's position and target percentages are
-    // the same as Homekit, and the inverse of other Connector devices.
-    if (deviceInfo.deviceType === DeviceType.kWiFiCurtain) {
+    // the same as Homekit, and the inverse of other Connector devices. This is
+    // also true of the top-down component of a TDBU blind.
+    if (deviceInfo.deviceType === DeviceType.kWiFiCurtain ||
+        deviceInfo.tdbuType === TDBUType.kTopDown) {
       this.kClosedValue = 0;
     }
     // Update the field names used in the device data if this is a TDBU blind.
