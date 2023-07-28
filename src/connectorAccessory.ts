@@ -133,7 +133,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     }
 
     // Log a debug message showing the new device state received from the hub.
-    Log.debug(`Updated ${this.accessory.displayName} state:`, newState);
+    Log.debug(`Latest ${this.accessory.displayName} state:`, newState);
 
     // Sanitize the device state for the specific device that we are handling.
     this.currentState = newState = this.sanitizeDeviceState(newState);
@@ -145,7 +145,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
     // We extract 'lastPos' as below because lastState will be undefined on the
     // first iteration, so we wish to force an update.
-    const lastPos = (this.lastState && this.lastState.data.currentPosition);
+    const lastPos = (this.lastState?.data.currentPosition);
     if (newState.data.currentPosition !== lastPos) {
       // Log a message for the user to signify that the position has changed.
       const newPos = this.toHomekitPercent(newState.data.currentPosition);
@@ -160,10 +160,11 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     }
 
     // Update the battery level if it has changed since the last refresh.
-    const lastBattery = (this.lastState && this.lastState.data.batteryLevel);
-    if (newState.data.batteryLevel !== lastBattery) {
+    const lastBatteryPC =
+        helpers.getBatteryPercent(this.lastState?.data.batteryLevel);
+    const batteryPC = helpers.getBatteryPercent(newState?.data.batteryLevel);
+    if (batteryPC !== lastBatteryPC) {
       // Log a message for the user, then push the new battery state to Homekit.
-      const batteryPC = helpers.getBatteryPercent(newState.data.batteryLevel);
       Log.info('Updating battery:', [this.accessory.displayName, batteryPC]);
       this.updateBatteryService();
     }

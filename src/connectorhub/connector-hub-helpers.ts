@@ -126,7 +126,10 @@ export function makeDeviceName(devInfo: ExtendedDeviceInfo): string {
 
 // Estimate battery charge percentage from reported voltage.
 // Calculation uses thresholds defined by the Connector app.
-export function getBatteryPercent(batteryLevel: number): number {
+export function getBatteryPercent(batteryLevel?: number): number {
+  if (batteryLevel === undefined) {
+    return -1;
+  }
   const voltageLevel = batteryLevel / 100.0;
   if (voltageLevel >= 15.9 || (voltageLevel >= 11.9 && voltageLevel < 13.2) ||
       (voltageLevel >= 7.9 && voltageLevel < 8.8)) {
