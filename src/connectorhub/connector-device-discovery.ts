@@ -19,6 +19,7 @@ const kDiscoveryIntervalMs = 5 * 60 * 1000;
 // Sends GetDeviceListReq every kDiscoveryFrequencyMs for kDiscoveryDurationMs.
 export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
   Log.debug('Starting discovery for hub:', hubIp);
+  const discoveredDevices: string[] = [];
   const hubTokens = {};
 
   // Create a socket for this discovery session, and add listeners to it.
@@ -26,9 +27,14 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
   socket.on('message', (msg) => {
     const recvMsg = tryParse(msg.toString());
     if (recvMsg && recvMsg.msgType === 'GetDeviceListAck') {
+      // Extract the device list and record the token associated with this hub.
       const deviceList = <GetDeviceListAck>(recvMsg);
       hubTokens[deviceList.mac] = deviceList.token;
-      for (const devInfo of deviceList.data) {
+      // Filter out any devices that have already been discovered this session.
+      const undiscoveredDevices = deviceList.data.filter(
+          (devInfo) => !discoveredDevices.includes(devInfo.mac));
+      // For all as-yet undiscovered devices, request full device information.
+      for (const devInfo of undiscoveredDevices) {
         // If this entry is the hub itself, skip over it and continue.
         if (devInfo.deviceType !== DeviceType.kWiFiBridge) {
           const readDevReq =
@@ -39,6 +45,7 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
     } else if (recvMsg && recvMsg.msgType === 'ReadDeviceAck') {
       const hubToken = hubTokens[extractHubMac(recvMsg.mac)];
       platform.registerDevice(hubIp, recvMsg, hubToken);
+      discoveredDevices.push(recvMsg.mac);
     } else if (recvMsg) {
       Log.debug('Unexpected message during discovery:', recvMsg);
     }
