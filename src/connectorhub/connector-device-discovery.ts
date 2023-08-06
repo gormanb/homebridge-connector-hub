@@ -6,7 +6,7 @@ import {Log} from '../util/log';
 
 import {DeviceModel, DeviceType, GetDeviceListAck, ReadDeviceAck} from './connector-hub-api';
 import {kSendPort} from './connector-hub-constants';
-import {makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
+import {extractHubMac, makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
 
 // These constants determine how long each discovery period lasts for, and how
 // often we send GetDeviceList requests during that period.
@@ -19,14 +19,15 @@ const kDiscoveryIntervalMs = 5 * 60 * 1000;
 // Sends GetDeviceListReq every kDiscoveryFrequencyMs for kDiscoveryDurationMs.
 export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
   Log.debug('Starting discovery for hub:', hubIp);
-  let deviceList: GetDeviceListAck;
+  const hubTokens = {};
 
   // Create a socket for this discovery session, and add listeners to it.
   const socket = dgram.createSocket('udp4');
   socket.on('message', (msg) => {
     const recvMsg = tryParse(msg.toString());
     if (recvMsg && recvMsg.msgType === 'GetDeviceListAck') {
-      deviceList = <GetDeviceListAck>(recvMsg);
+      const deviceList = <GetDeviceListAck>(recvMsg);
+      hubTokens[deviceList.mac] = deviceList.token;
       for (const devInfo of deviceList.data) {
         // If this entry is the hub itself, skip over it and continue.
         if (devInfo.deviceType !== DeviceType.kWiFiBridge) {
@@ -36,7 +37,8 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
         }
       }
     } else if (recvMsg && recvMsg.msgType === 'ReadDeviceAck') {
-      platform.registerDevice(hubIp, recvMsg, deviceList.token);
+      const hubToken = hubTokens[extractHubMac(recvMsg.mac)];
+      platform.registerDevice(hubIp, recvMsg, hubToken);
     } else if (recvMsg) {
       Log.debug('Unexpected message during discovery:', recvMsg);
     }
@@ -55,7 +57,7 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
     // When we have exceeded the discovery duration...
     if ((new Date()).getTime() - kStartTime > kDiscoveryDurationMs) {
       // ... if we didn't hear back from the hub, keep going...
-      if (!deviceList) {
+      if (!Object.keys(hubTokens).length) {
         Log.warn(`Device discovery failed to reach hub ${hubIp}, retrying...`);
         kStartTime = (new Date()).getTime();
         return;

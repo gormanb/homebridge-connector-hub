@@ -109,6 +109,11 @@ export function getDeviceModel(
   return basicModel + tdbuType;
 }
 
+// Given a device's MAC, extract the MAC of its parent hub.
+export function extractHubMac(deviceMac: string): string {
+  return deviceMac.slice(0, kMacAddrLength);
+}
+
 export function makeDeviceName(devInfo: ExtendedDeviceInfo): string {
   // The format of a device's MAC is [hub_mac][device_num] where the former is a
   // 12-character hex string and the latter is a 4-digit hex string. If this is

@@ -13,7 +13,7 @@
       },
       "hubIps": {
         "title": "Hub / Wifi Device IPs",
-        "description": "If you have more than one hub or WiFi motor device, or if you have a single hub/device but UDP multicast auto-discovery is not working, specify the IPs of each device here.",
+        "description": "If UDP multicast auto-discovery is not working, specify the IPs of each hub or WiFi motor device here.",
         "type": "array",
         "required": true,
         "minLength": 0,
