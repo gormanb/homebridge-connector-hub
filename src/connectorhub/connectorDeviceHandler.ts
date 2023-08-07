@@ -68,9 +68,9 @@ export class ConnectorDeviceHandler {
   }
 
   // Check whether a targeting request response is invalid.
-  protected isInvalidTargetAck(ack: WriteDeviceResponse) {
+  protected isInvalidAck(ack: WriteDeviceResponse|ReadDeviceResponse) {
     return ack &&
-        (!ack.data ||
+        (!ack.data || (<WriteDeviceAck>ack)?.actionResult ||
          (!this.usesBinaryState() &&
           ack.data[this.fields.currentPosition] === undefined));
   }

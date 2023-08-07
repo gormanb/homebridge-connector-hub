@@ -122,6 +122,12 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
         this.passiveReadTicker ? ReadDeviceType.kPassive :
                                  ReadDeviceType.kActive));
 
+    // Check whether the response from the hub is valid.
+    if (newState && this.isInvalidAck(newState)) {
+      Log.error('Error received from hub. App key may be invalid:', newState);
+      return;
+    }
+
     // Update the cached current and last-good copies of the device status.
     this.lastState = (this.currentState || this.lastState);
     this.currentState = newState;
@@ -221,12 +227,9 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
       return this.client.setDeviceState(targetReq);
     })();
 
-    // Check whether the ack we received is valid for the request we sent.
-    const invalidAck = this.isInvalidTargetAck(ack);
-
     // If we didn't receive an ack, or if the ack reports an exception from the
     // hub, or if the ack is invalid, throw a communications error to Homekit.
-    if (!ack || ack.actionResult || invalidAck) {
+    if (!ack || this.isInvalidAck(ack)) {
       Log.error(
           `Failed to set ${this.accessory.displayName} to ${targetVal}:`,
           (ack || 'No response from hub'));
