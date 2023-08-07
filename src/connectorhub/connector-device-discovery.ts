@@ -37,9 +37,8 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
       for (const devInfo of undiscoveredDevices) {
         // If this entry is the hub itself, skip over it and continue.
         if (devInfo.deviceType !== DeviceType.kWiFiBridge) {
-          const readDevReq =
-              Buffer.from(JSON.stringify(makeReadDeviceRequest(devInfo)));
-          socket.send(readDevReq, kSendPort, hubIp);
+          socket.send(
+              JSON.stringify(makeReadDeviceRequest(devInfo)), kSendPort, hubIp);
         }
       }
     } else if (recvMsg && recvMsg.msgType === 'ReadDeviceAck') {
@@ -57,9 +56,7 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
   let kStartTime = (new Date()).getTime();
   const timer = setInterval(() => {
     // Send a message to the hub requesting the list of available devices.
-    const getDevListReq =
-        Buffer.from(JSON.stringify(makeGetDeviceListRequest()));
-    socket.send(getDevListReq, kSendPort, hubIp);
+    socket.send(JSON.stringify(makeGetDeviceListRequest()), kSendPort, hubIp);
 
     // When we have exceeded the discovery duration...
     if ((new Date()).getTime() - kStartTime > kDiscoveryDurationMs) {

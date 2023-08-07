@@ -32,8 +32,8 @@ async function sendCommandMultiResponse(
       // Create a socket to service this request.
       const socket = DgramAsPromised.createSocket('udp4');
 
-      // Convert the command to a byte buffer of the string representation.
-      const sendMsg = Buffer.from(JSON.stringify(cmdObj));
+      // Convert the command to a string representation.
+      const sendMsg = JSON.stringify(cmdObj);
 
       // Send the message. We'll wait for confirmation that it was sent later.
       const sendResult = socket.send(sendMsg, consts.kSendPort, ip);
