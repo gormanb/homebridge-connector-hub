@@ -4,9 +4,9 @@ import * as dgram from 'dgram';
 import {ConnectorHubPlatform} from '../platform';
 import {Log} from '../util/log';
 
-import {DeviceModel, DeviceType, GetDeviceListAck, ReadDeviceAck} from './connector-hub-api';
+import {DeviceModel, GetDeviceListAck, ReadDeviceAck} from './connector-hub-api';
 import {kSendPort} from './connector-hub-constants';
-import {extractHubMac, makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
+import {extractHubMac, isWifiBridge, makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
 
 // These constants determine how long each discovery period lasts for, and how
 // often we send GetDeviceList requests during that period.
@@ -36,7 +36,7 @@ export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
       // For all as-yet undiscovered devices, request full device information.
       for (const devInfo of undiscoveredDevices) {
         // If this entry is the hub itself, skip over it and continue.
-        if (devInfo.deviceType !== DeviceType.kWiFiBridge) {
+        if (!isWifiBridge(devInfo.deviceType)) {
           socket.send(
               JSON.stringify(makeReadDeviceRequest(devInfo)), kSendPort, hubIp);
         }

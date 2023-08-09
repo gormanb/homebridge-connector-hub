@@ -10,6 +10,7 @@ export enum DeviceOpCode {
 
 export enum DeviceType {
   kWiFiBridge = '02000001',
+  kWiFiBridgeAlt = '02000002',
   k433MHzRadioMotor = '10000000',
   kWiFiCurtain = '22000000',
   kWiFiTubularMotor = '22000002',

@@ -94,6 +94,13 @@ export function tryParse(jsonStr: string) {
   }
 }
 
+// Helper function to determine whether the given deviceType is a WiFi bridge.
+// A given hub may report one of several valid device type codes.
+export function isWifiBridge(deviceType: hubapi.DeviceType) {
+  return deviceType === hubapi.DeviceType.kWiFiBridge ||
+      deviceType === hubapi.DeviceType.kWiFiBridgeAlt;
+}
+
 // The 'type' is the 'deviceType' field from the ReadDeviceAck response.
 // The 'subType' is the 'data.type' field from the ReadDeviceAck response.
 export function getDeviceModel(
