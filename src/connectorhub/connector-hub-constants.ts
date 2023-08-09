@@ -1,3 +1,5 @@
+import {DeviceType} from './connector-hub-api';
+
 /*
  * Constants defined by the Connector hub protocol and by this plugin.
  */
@@ -32,11 +34,12 @@ export const hubStats = [undefined, 'Working', 'Pairing', 'Updating'];
 
 // Device types. Can be either the hub itself or a connected device.
 export const deviceTypes = {
-  '10000000': '433Mhz Radio Motor',
-  '22000000': 'Wi-Fi Curtain',
-  '02000001': 'Wi-Fi Bridge',
-  '22000002': 'Wi-Fi Tubular Motor',
-  '22000005': 'Wi-Fi Receiver',
+  [DeviceType.k433MHzRadioMotor]: '433Mhz Radio Motor',
+  [DeviceType.kWiFiCurtain]: 'Wi-Fi Curtain',
+  [DeviceType.kWiFiBridge]: 'Wi-Fi Bridge',
+  [DeviceType.kWiFiBridgeAlt]: 'Wi-Fi Bridge',
+  [DeviceType.kWiFiTubularMotor]: 'Wi-Fi Tubular Motor',
+  [DeviceType.kWiFiReceiver]: 'Wi-Fi Receiver',
 };
 
 // Recognised device models that can be connected to the hub.
