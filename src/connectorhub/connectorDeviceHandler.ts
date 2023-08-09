@@ -67,11 +67,11 @@ export class ConnectorDeviceHandler {
     return [hubTarget, this.makeTargetPositionRequest(hubTarget)];
   }
 
-  // Check whether a targeting request response is invalid.
+  // Check whether a response received from the hub is invalid.
   protected isInvalidAck(ack: WriteDeviceResponse|ReadDeviceResponse) {
     return ack &&
         (!ack.data || (<WriteDeviceAck>ack)?.actionResult ||
-         (!this.usesBinaryState() &&
+         (this.lastState && !this.usesBinaryState() &&
           ack.data[this.fields.currentPosition] === undefined));
   }
 
