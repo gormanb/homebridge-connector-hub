@@ -69,10 +69,7 @@ export class ConnectorDeviceHandler {
 
   // Check whether a response received from the hub is invalid.
   protected isInvalidAck(ack: WriteDeviceResponse|ReadDeviceResponse) {
-    return ack &&
-        (!ack.data || (<WriteDeviceAck>ack)?.actionResult ||
-         (this.lastState && !this.usesBinaryState() &&
-          ack.data[this.fields.currentPosition] === undefined));
+    return ack && (!ack.data || (<WriteDeviceAck>ack)?.actionResult);
   }
 
   // Given a hub target value, constructs a binary open/close request.
@@ -143,6 +140,12 @@ export class ConnectorDeviceHandler {
       // Convert the device's operation code to a position value.
       deviceState.data.currentPosition =
           this.opCodeToPosition(deviceState.data.operation);
+      return deviceState;
+    }
+    // If the operation is "stopped" then check if we have a target position.
+    const target = <number>(deviceState.data.targetPosition);
+    if (deviceState.data.operation === DeviceOpCode.kStopped && target >= 0) {
+      deviceState.data.currentPosition = target;
       return deviceState;
     }
     // If we reach here, then neither state nor position are available.
