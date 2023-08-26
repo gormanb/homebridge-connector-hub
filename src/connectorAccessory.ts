@@ -134,7 +134,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
     // If we didn't hear back from the device, exit early.
     if (!newState) {
-      Log.warn('Periodic refresh failed:', this.accessory.displayName);
+      Log.debug('Periodic refresh failed:', this.accessory.displayName);
       return;
     }
 

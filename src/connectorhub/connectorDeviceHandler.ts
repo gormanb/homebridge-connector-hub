@@ -149,7 +149,7 @@ export class ConnectorDeviceHandler {
       return deviceState;
     }
     // If we reach here, then neither state nor position are available.
-    Log.warn('Failed to sanitize device state:', deviceState);
+    Log.debug('Failed to sanitize device state:', deviceState);
     deviceState.data.currentPosition = this.kClosedValue;
     return deviceState;
   }
