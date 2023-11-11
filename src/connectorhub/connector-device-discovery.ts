@@ -17,7 +17,8 @@ const kDiscoveryFrequencyMs = 1000;
 const kDiscoveryIntervalMs = 5 * 60 * 1000;
 
 // Sends GetDeviceListReq every kDiscoveryFrequencyMs for kDiscoveryDurationMs.
-export function doDiscovery(hubIp: string, platform: ConnectorHubPlatform) {
+export async function doDiscovery(
+    hubIp: string, platform: ConnectorHubPlatform) {
   Log.debug('Starting discovery for hub:', hubIp);
   const discoveredDevices: string[] = [];
   const hubTokens = {};
