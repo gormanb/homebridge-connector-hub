@@ -102,7 +102,7 @@ export function isWifiBridge(deviceType: DeviceType) {
 // The 'type' is the 'deviceType' field from the ReadDeviceAck response.
 // The 'subType' is the 'data.type' field from the ReadDeviceAck response.
 export function getDeviceModel(
-    type: string, subType?: number, tdbuType?: TDBUType): string {
+    type: string, subType?: number, tdbuType = TDBUType.kNone): string {
   // For some devices, such as a Wifi curtain motor, there is no device subtype
   // and the model is determined by the type. For other devices, generally RF
   // motors connected to a hub, look up the device subtype.
