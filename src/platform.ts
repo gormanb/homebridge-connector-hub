@@ -6,7 +6,7 @@ import {ConnectorAccessory} from './connectorAccessory';
 import {doDiscovery, identifyTdbuDevices, removeStaleAccessories} from './connectorhub/connector-device-discovery';
 import {ReadDeviceAck} from './connectorhub/connector-hub-api';
 import * as consts from './connectorhub/connector-hub-constants';
-import {ExtendedDeviceInfo, makeDeviceName, TDBUType} from './connectorhub/connector-hub-helpers';
+import {ExtendedDeviceInfo, makeDeviceName, spliceIndexOf, TDBUType} from './connectorhub/connector-hub-helpers';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 import {Log} from './util/log';
 
@@ -181,13 +181,16 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
    * Homebridge and from Homekit.
    */
   public unregisterDevice(accessory: PlatformAccessory) {
+    // Unregister the specified accessory from the plugin.
     Log.info('Removing stale accessory:', accessory.displayName);
     this.api.unregisterPlatformAccessories(
         PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-    // Remove this device from the cached accessories list, if present.
-    if (this.cachedAccessories.includes(accessory)) {
-      this.cachedAccessories.splice(
-          this.cachedAccessories.indexOf(accessory), 1);
-    }
+    // Remove this cached or active accessory from the appropriate list.
+    this.cachedAccessories.splice(
+        spliceIndexOf(this.cachedAccessories, accessory), 1);
+    this.accessoryHandlers.splice(
+        spliceIndexOf(
+            this.accessoryHandlers.map(ah => ah.accessory), accessory),
+        1);
   }
 }

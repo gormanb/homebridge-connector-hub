@@ -92,6 +92,13 @@ export function tryParse(jsonStr: string) {
   }
 }
 
+// Safe indexOf for use with splice. If the element does not exist in the array,
+// returns the array length, which will cause splice to remove nothing.
+export function spliceIndexOf(arr: any[], value: any) {
+  const idx = arr.indexOf(value);
+  return (idx >= 0 ? idx : arr.length);
+}
+
 // Helper function to determine whether the given deviceType is a WiFi bridge.
 // A given hub may report one of several valid device type codes.
 export function isWifiBridge(deviceType: DeviceType) {
