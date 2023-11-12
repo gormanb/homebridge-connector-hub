@@ -3,8 +3,7 @@ import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
 import {ReadDeviceAck} from './connectorhub/connector-hub-api';
 import {ReadDeviceType} from './connectorhub/connector-hub-constants';
-import * as helpers from './connectorhub/connector-hub-helpers';
-import {ExtendedDeviceInfo} from './connectorhub/connector-hub-helpers';
+import {ExtendedDeviceInfo, getBatteryPercent, getDeviceModel, isLowBattery, makeDeviceName} from './connectorhub/connector-hub-helpers';
 import {ConnectorDeviceHandler, ReadDeviceResponse, WriteDeviceResponse} from './connectorhub/connectorDeviceHandler';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
@@ -84,7 +83,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     const Characteristic = this.platform.Characteristic;
 
     // Update the accessory display name, in case it wasn't set already.
-    this.accessory.displayName = helpers.makeDeviceName(this.deviceInfo);
+    this.accessory.displayName = makeDeviceName(this.deviceInfo);
     this.platform.api.updatePlatformAccessories([this.accessory]);
 
     // Set the service names. These are the default names displayed by Homekit.
@@ -100,8 +99,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
         .setCharacteristic(Characteristic.SerialNumber, this.deviceInfo.mac)
         .setCharacteristic(
             Characteristic.Model,
-            helpers.getDeviceModel(
-                deviceState.deviceType, deviceState.data.type));
+            getDeviceModel(deviceState.deviceType, deviceState.data.type));
   }
 
   /**
@@ -177,9 +175,8 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     }
 
     // Update the battery level if it has changed since the last refresh.
-    const lastBatteryPC =
-        helpers.getBatteryPercent(this.lastState?.data.batteryLevel);
-    const batteryPC = helpers.getBatteryPercent(newState?.data.batteryLevel);
+    const lastBatteryPC = getBatteryPercent(this.lastState?.data.batteryLevel);
+    const batteryPC = getBatteryPercent(newState?.data.batteryLevel);
     if (batteryPC !== lastBatteryPC) {
       // Log a message for the user, then push the new battery state to Homekit.
       Log.info('Updating battery:', [this.accessory.displayName, batteryPC]);
@@ -212,10 +209,10 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     if (this.currentState) {
       this.batteryService.updateCharacteristic(
           this.platform.Characteristic.BatteryLevel,
-          helpers.getBatteryPercent(this.currentState.data.batteryLevel));
+          getBatteryPercent(this.currentState.data.batteryLevel));
       this.batteryService.updateCharacteristic(
           this.platform.Characteristic.StatusLowBattery,
-          helpers.isLowBattery(this.currentState.data.batteryLevel));
+          isLowBattery(this.currentState.data.batteryLevel));
       this.batteryService.updateCharacteristic(
           this.platform.Characteristic.ChargingState,
           this.currentState.data.chargingState ||

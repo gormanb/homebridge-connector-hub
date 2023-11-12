@@ -1,23 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable max-len */
 /* eslint-disable indent */
 import {DgramAsPromised} from 'dgram-as-promised';
 import {PlatformConfig} from 'homebridge';
 
 import {Log} from '../util/log';
 
-import * as hubapi from './connector-hub-api';
-import * as consts from './connector-hub-constants';
-import {ReadDeviceType} from './connector-hub-constants';
-import * as helpers from './connector-hub-helpers';
+import {DeviceCmd, DeviceInfo, DeviceOpCode, GetDeviceListAck, GetDeviceListReq, ReadDeviceAck, ReadDeviceReq, WriteDeviceAck, WriteDeviceReq} from './connector-hub-api';
+import {kSendPort, ReadDeviceType} from './connector-hub-constants';
+import {computeAccessToken, makeGetDeviceListRequest, makeReadDeviceRequest, makeWriteDeviceRequest, tryParse} from './connector-hub-helpers';
 
 const kSocketTimeoutMs = 250;
 const kMaxRetries = 3;
 
 // Types we expect for connector hub requests and responses.
-type DeviceRequest =
-    hubapi.GetDeviceListReq|hubapi.WriteDeviceReq|hubapi.ReadDeviceReq;
-type DeviceResponse =
-    hubapi.GetDeviceListAck|hubapi.WriteDeviceAck|hubapi.ReadDeviceAck;
+type DeviceRequest = GetDeviceListReq|WriteDeviceReq|ReadDeviceReq;
+type DeviceResponse = GetDeviceListAck|WriteDeviceAck|ReadDeviceAck;
 
 // Function to send a request to the hub and receive a sequence of responses.
 async function sendCommandMultiResponse(
@@ -36,7 +34,7 @@ async function sendCommandMultiResponse(
       const sendMsg = JSON.stringify(cmdObj);
 
       // Send the message. We'll wait for confirmation that it was sent later.
-      const sendResult = socket.send(sendMsg, consts.kSendPort, ip);
+      const sendResult = socket.send(sendMsg, kSendPort, ip);
 
       // Holds the message parsed from the hub response.
       let response: DeviceResponse;
@@ -48,7 +46,7 @@ async function sendCommandMultiResponse(
         const recvMsg = await sendResult && await socket.recv();
 
         // Try to parse the response and add it to the list of responses.
-        if ((response = recvMsg && helpers.tryParse(recvMsg.msg.toString()))) {
+        if ((response = recvMsg && tryParse(recvMsg.msg.toString()))) {
           responses.push(response);
         }
 
@@ -79,35 +77,34 @@ export class ConnectorHubClient {
 
   constructor(
       private readonly config: PlatformConfig,
-      private readonly deviceInfo: hubapi.DeviceInfo,
+      private readonly deviceInfo: DeviceInfo,
       private readonly hubIp: string,
       private readonly hubToken: string,
   ) {
-    this.accessToken = helpers.computeAccessToken(
+    this.accessToken = computeAccessToken(
         {connectorKey: this.config.connectorKey, hubToken: this.hubToken});
   }
 
   public static getDeviceList(hubIp: string): Promise<DeviceResponse[]> {
-    return sendCommandMultiResponse(helpers.makeGetDeviceListRequest(), hubIp);
+    return sendCommandMultiResponse(makeGetDeviceListRequest(), hubIp);
   }
 
-  public static readDeviceState(hubIp: string, deviceInfo: hubapi.DeviceInfo):
+  public static readDeviceState(hubIp: string, deviceInfo: DeviceInfo):
       Promise<DeviceResponse> {
-    return sendCommand(helpers.makeReadDeviceRequest(deviceInfo), hubIp);
+    return sendCommand(makeReadDeviceRequest(deviceInfo), hubIp);
   }
 
   public getDeviceState(readType: ReadDeviceType): Promise<DeviceResponse> {
     if (readType === ReadDeviceType.kActive) {
-      const activeReq = helpers.makeWriteDeviceRequest(
+      const activeReq = makeWriteDeviceRequest(
           this.deviceInfo, this.accessToken,
-          {operation: hubapi.DeviceOpCode.kStatusQuery});
+          {operation: DeviceOpCode.kStatusQuery});
       return sendCommand(activeReq, this.hubIp);
     }
-    return sendCommand(
-        helpers.makeReadDeviceRequest(this.deviceInfo), this.hubIp);
+    return sendCommand(makeReadDeviceRequest(this.deviceInfo), this.hubIp);
   }
 
-  public setOpenCloseState(op: hubapi.DeviceOpCode): Promise<DeviceResponse> {
+  public setOpenCloseState(op: DeviceOpCode): Promise<DeviceResponse> {
     return this.setDeviceState({operation: op});
   }
 
@@ -119,9 +116,9 @@ export class ConnectorHubClient {
     return this.setDeviceState({targetAngle: angle});
   }
 
-  public setDeviceState(command: hubapi.DeviceCmd): Promise<DeviceResponse> {
-    const request = helpers.makeWriteDeviceRequest(
-        this.deviceInfo, this.accessToken, command);
+  public setDeviceState(command: DeviceCmd): Promise<DeviceResponse> {
+    const request =
+        makeWriteDeviceRequest(this.deviceInfo, this.accessToken, command);
     return sendCommand(request, this.hubIp);
   }
 }

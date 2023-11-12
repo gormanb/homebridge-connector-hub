@@ -9,9 +9,8 @@ import * as aesjs from 'aes-js';
 
 import {Log} from '../util/log';
 
-import * as hubapi from './connector-hub-api';
-import * as consts from './connector-hub-constants';
-import {kMacAddrLength} from './connector-hub-constants';
+import {DeviceCmd, DeviceInfo, DeviceModel, DeviceType, GetDeviceListReq, ReadDeviceReq, WriteDeviceReq} from './connector-hub-api';
+import {deviceModels, deviceTypes, kLowBatteryPercent, kMacAddrLength} from './connector-hub-constants';
 
 //
 // Special types used internally by the plugin.
@@ -24,8 +23,8 @@ export enum TDBUType {
 }
 
 // This augmented type is not part of the Hub API.
-export interface ExtendedDeviceInfo extends hubapi.DeviceInfo {
-  subType: hubapi.DeviceModel;
+export interface ExtendedDeviceInfo extends DeviceInfo {
+  subType: DeviceModel;
   tdbuType: TDBUType;
   hubIp: string;
   hubToken: string;
@@ -47,7 +46,7 @@ export function makeMsgId(): string {
   return (new Date()).toJSON().replaceAll(/\D/g, '');
 }
 
-export function makeGetDeviceListRequest(): hubapi.GetDeviceListReq {
+export function makeGetDeviceListRequest(): GetDeviceListReq {
   return {msgType: 'GetDeviceList', msgID: makeMsgId()};
 }
 
@@ -57,8 +56,7 @@ export function makeGetDeviceListRequest(): hubapi.GetDeviceListReq {
 // method causes the responsiveness of the devices to degrade over time; there
 // may be some kind of rate-limiting mechanism in the hub. ReadDevice has no
 // such issues, possibly because it reads a cached value from the hub itself.
-export function makeReadDeviceRequest(deviceInfo: hubapi.DeviceInfo):
-    hubapi.ReadDeviceReq {
+export function makeReadDeviceRequest(deviceInfo: DeviceInfo): ReadDeviceReq {
   return {
     msgType: 'ReadDevice',
     mac: deviceInfo.mac,
@@ -68,8 +66,8 @@ export function makeReadDeviceRequest(deviceInfo: hubapi.DeviceInfo):
 }
 
 export function makeWriteDeviceRequest(
-    deviceInfo: hubapi.DeviceInfo, accessToken: string,
-    command: hubapi.DeviceCmd): hubapi.WriteDeviceReq {
+    deviceInfo: DeviceInfo, accessToken: string,
+    command: DeviceCmd): WriteDeviceReq {
   return {
     msgType: 'WriteDevice',
     mac: deviceInfo.mac,
@@ -96,9 +94,9 @@ export function tryParse(jsonStr: string) {
 
 // Helper function to determine whether the given deviceType is a WiFi bridge.
 // A given hub may report one of several valid device type codes.
-export function isWifiBridge(deviceType: hubapi.DeviceType) {
-  return deviceType === hubapi.DeviceType.kWiFiBridge ||
-      deviceType === hubapi.DeviceType.kWiFiBridgeAlt;
+export function isWifiBridge(deviceType: DeviceType) {
+  return deviceType === DeviceType.kWiFiBridge ||
+      deviceType === DeviceType.kWiFiBridgeAlt;
 }
 
 // The 'type' is the 'deviceType' field from the ReadDeviceAck response.
@@ -108,9 +106,8 @@ export function getDeviceModel(
   // For some devices, such as a Wifi curtain motor, there is no device subtype
   // and the model is determined by the type. For other devices, generally RF
   // motors connected to a hub, look up the device subtype.
-  const basicModel = subType ?
-      consts.deviceModels[subType] || 'Unidentified Device' :
-      consts.deviceTypes[type];
+  const basicModel = subType ? deviceModels[subType] || 'Unidentified Device' :
+                               deviceTypes[type];
 
   // Append the TDBU type to the model name.
   return basicModel + tdbuType;
@@ -171,5 +168,5 @@ export function getBatteryPercent(batteryLevel?: number): number {
 }
 
 export function isLowBattery(batteryLevel: number): boolean {
-  return getBatteryPercent(batteryLevel) <= consts.kLowBatteryPercent;
+  return getBatteryPercent(batteryLevel) <= kLowBatteryPercent;
 }
