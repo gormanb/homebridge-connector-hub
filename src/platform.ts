@@ -3,7 +3,7 @@ import {API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, P
 import {isIPv4} from 'net';
 
 import {ConnectorAccessory} from './connectorAccessory';
-import {doDiscovery, identifyTdbuDevices} from './connectorhub/connector-device-discovery';
+import {doDiscovery, identifyTdbuDevices, removeStaleAccessories} from './connectorhub/connector-device-discovery';
 import {ReadDeviceAck} from './connectorhub/connector-hub-api';
 import * as consts from './connectorhub/connector-hub-constants';
 import {ExtendedDeviceInfo, makeDeviceName, TDBUType} from './connectorhub/connector-hub-helpers';
@@ -96,6 +96,22 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     }
   }
 
+  // The list of hubs that have been successfully scanned during discovery.
+  private hubIpsScanned: string[] = [];
+
+  public async onDiscoveryCompleteForHub(hubIp: string) {
+    // Add this hub to the list of hubs we've scanned.
+    this.hubIpsScanned.push(hubIp);
+    // Don't try to remove stale devices until we have heard from evey hub.
+    if (!this.config.hubIps.every(ip => this.hubIpsScanned.includes(ip))) {
+      return;
+    }
+    Log.debug('Checking for stale cached accessories...');
+    removeStaleAccessories(this.cachedAccessories, this);
+    // Clear the list of scanned hubs for the next round of discovery.
+    this.hubIpsScanned = [];
+  }
+
   /**
    * Register discovered accessories. Accessories must only be registered once;
    * previously created accessories must not be registered again, to avoid
@@ -144,6 +160,10 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
         accessory = new this.api.platformAccessory(displayName, uuid);
         this.api.registerPlatformAccessories(
             PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      } else {
+        // Remove the cached accessory from the list before adding a handler.
+        this.cachedAccessories.splice(
+            this.cachedAccessories.indexOf(accessory), 1);
       }
 
       // Make sure the accessory stays in sync with any device config changes.
@@ -153,6 +173,21 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       // Create the accessory handler for this accessory.
       Log.debug('Creating handler for accessory:', displayName);
       this.accessoryHandlers.push(new ConnectorAccessory(this, accessory));
+    }
+  }
+
+  /**
+   * Unregister a stale accessory. This will remove the accessory from both
+   * Homebridge and from Homekit.
+   */
+  public unregisterDevice(accessory: PlatformAccessory) {
+    Log.info('Removing stale accessory:', accessory.displayName);
+    this.api.unregisterPlatformAccessories(
+        PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    // Remove this device from the cached accessories list, if present.
+    if (this.cachedAccessories.includes(accessory)) {
+      this.cachedAccessories.splice(
+          this.cachedAccessories.indexOf(accessory), 1);
     }
   }
 }

@@ -69,7 +69,7 @@ export class ConnectorDeviceHandler {
 
   // Check whether a response received from the hub is invalid.
   protected isInvalidAck(ack: WriteDeviceResponse|ReadDeviceResponse) {
-    return ack && (!ack.data || (<WriteDeviceAck>ack)?.actionResult);
+    return ack && (!ack.data || ack.actionResult);
   }
 
   // Given a hub target value, constructs a binary open/close request.

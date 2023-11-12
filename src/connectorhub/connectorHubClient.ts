@@ -91,6 +91,11 @@ export class ConnectorHubClient {
     return sendCommandMultiResponse(helpers.makeGetDeviceListRequest(), hubIp);
   }
 
+  public static readDeviceState(hubIp: string, deviceInfo: hubapi.DeviceInfo):
+      Promise<DeviceResponse> {
+    return sendCommand(helpers.makeReadDeviceRequest(deviceInfo), hubIp);
+  }
+
   public getDeviceState(readType: ReadDeviceType): Promise<DeviceResponse> {
     if (readType === ReadDeviceType.kActive) {
       const activeReq = helpers.makeWriteDeviceRequest(

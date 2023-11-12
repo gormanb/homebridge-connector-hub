@@ -33,6 +33,9 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
   // When this counter is 0 mod kActiveReadRatio, perform an active read.
   private passiveReadTicker = -1;
 
+  // The handler for the periodic refresh process.
+  private updateTimer: NodeJS.Timer;
+
   constructor(
       private readonly platform: ConnectorHubPlatform,
       public readonly accessory: PlatformAccessory,
@@ -57,7 +60,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
     // Initialize the device state and set up a periodic refresh.
     this.updateDeviceStatus();
-    setInterval(
+    this.updateTimer = setInterval(
         () => this.updateDeviceStatus(), ConnectorAccessory.kRefreshInterval);
 
     // Register handlers for the CurrentPosition Characteristic.
@@ -124,6 +127,14 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
     // Check whether the response from the hub is valid.
     if (newState && this.isInvalidAck(newState)) {
+      // Read reply with 'actionResult' implies the device has been removed.
+      if (newState.msgType === 'ReadDeviceAck' && newState.actionResult) {
+        Log.info('Stale device response received:', newState);
+        this.platform.unregisterDevice(this.accessory);
+        clearInterval(this.updateTimer);
+        return;
+      }
+      // Otherwise, we may have a write reply error due to invalid access token.
       Log.error('Error received from hub. App key may be invalid:', newState);
       return;
     }
@@ -265,7 +276,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
    */
   async getCurrentPosition(): Promise<CharacteristicValue> {
     if (!this.currentState) {
-      Log.error('Failed to get position:', this.accessory.displayName);
+      Log.debug('Failed to get position:', this.accessory.displayName);
       throw new this.platform.api.hap.HapStatusError(
           this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }

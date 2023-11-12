@@ -169,6 +169,7 @@ export interface ReadDeviceAck {
   mac: string;
   deviceType: DeviceType;
   data: DeviceStatus;
+  actionResult?: string;
 }
 
 // Sent to connected clients every 30-60s. Not used at present.
