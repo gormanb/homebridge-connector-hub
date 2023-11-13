@@ -3,30 +3,91 @@
   "pluginType": "platform",
   "singular": true,
   "schema": {
-    "type": "object",
-    "properties": {
-      "connectorKey": {
-        "title": "App Key",
+    "connectorKey": {
+      "title": "App Key",
+      "type": "string",
+      "description": "Key obtained from the blinds app. Go to the About page and tap the screen five times.",
+      "required": true
+    },
+    "hubIps": {
+      "title": "Hub / Wifi Device IPs",
+      "description": "If UDP multicast auto-discovery is not working, specify the IPs of each hub or WiFi motor device here.",
+      "type": "array",
+      "buttonText": "Add Hub / WiFi Device IP",
+      "required": false,
+      "minLength": 0,
+      "items": {
         "type": "string",
-        "description": "Key obtained from the blinds app. Go to the About page and tap the screen five times.",
-        "required": true
-      },
-      "hubIps": {
-        "title": "Hub / Wifi Device IPs",
-        "description": "If UDP multicast auto-discovery is not working, specify the IPs of each hub or WiFi motor device here.",
-        "type": "array",
-        "required": true,
-        "minLength": 0,
-        "items": {
-          "type": "string",
-          "format": "ipv4"
-        }
-      },
-      "enableDebugLog": {
-        "title": "Debug Logging",
-        "type": "boolean",
-        "default": false
+        "format": "ipv4"
       }
+    },
+    "reverseDirection": {
+      "title": "Reverse Direction",
+      "description": "If some of your devices move in the opposite of the expected direction, add their Serial Numbers here.",
+      "type": "array",
+      "buttonText": "Add Device Serial Number",
+      "required": false,
+      "minLength": 0,
+      "items": {
+        "type": "string"
+      }
+    },
+    "invertReverseList": {
+      "title": "Reverse All Except Listed Devices",
+      "description": "Inverts the behaviour of the list above by reversing all devices *except* the ones in the list.",
+      "type": "boolean",
+      "default": false
+    },
+    "enableDebugLog": {
+      "title": "Debug Logging",
+      "type": "boolean",
+      "default": false
     }
-  }
+  },
+  "layout": [
+    {
+      "key": "basic_settings",
+      "title": "Basic Settings",
+      "type": "section",
+      "expandable": true,
+      "expanded": true,
+      "items": [
+        "connectorKey"
+      ]
+    },
+    {
+      "key": "advanced_settings",
+      "title": "Advanced Settings",
+      "type": "section",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        {
+          "key": "hubIps",
+          "type": "array",
+          "items": [
+            "hubIps[]"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "debug_settings",
+      "title": "Debug Settings",
+      "type": "section",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        {
+          "key": "reverseDirection",
+          "type": "array",
+          "items": [
+            "reverseDirection[]"
+          ]
+        },
+        "invertReverseList",
+        "enableDebugLog"
+      ]
+    }
+  ]
 }

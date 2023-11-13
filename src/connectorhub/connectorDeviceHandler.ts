@@ -1,9 +1,11 @@
 /* eslint-disable indent */
+import {PlatformConfig} from 'homebridge';
+
 import {Log} from '../util/log';
 
 import {DeviceCmd, DeviceOpCode, DeviceType, ReadDeviceAck, WirelessMode, WriteDeviceAck} from './connector-hub-api';
 import {OperationState} from './connector-hub-constants';
-import {ExtendedDeviceInfo, TDBUType} from './connector-hub-helpers';
+import {ExtendedDeviceInfo, TDBUType, xor} from './connector-hub-helpers';
 
 // Response types we expect for device status. Undefined if no response.
 export type ReadDeviceResponse = ReadDeviceAck|undefined;
@@ -36,13 +38,19 @@ export class ConnectorDeviceHandler {
 
   constructor(
       protected readonly deviceInfo: ExtendedDeviceInfo,
+      protected readonly config: PlatformConfig,
   ) {
     // Unlike hub devices, a WiFi curtain's position and target percentages are
     // the same as Homekit, and the inverse of other Connector devices. This is
     // also true of the top-down component of a TDBU blind.
     if (deviceInfo.deviceType === DeviceType.kWiFiCurtain ||
         deviceInfo.tdbuType === TDBUType.kTopDown) {
-      this.kClosedValue = 0;
+      this.kClosedValue = this.invertPC(this.kClosedValue);
+    }
+    // If the user reversed this device's direction, invert the closed state.
+    const reverseDevice = config.reverseDirection.includes(deviceInfo.mac);
+    if (xor(reverseDevice, config.invertReverseList)) {
+      this.kClosedValue = this.invertPC(this.kClosedValue);
     }
     // Update the field names used in the device data if this is a TDBU blind.
     if (deviceInfo.tdbuType !== TDBUType.kNone) {

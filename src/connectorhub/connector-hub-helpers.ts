@@ -99,6 +99,11 @@ export function spliceIndexOf(arr: any[], value: any) {
   return (idx >= 0 ? idx : arr.length);
 }
 
+// Helper to implement a logical XOR.
+export function xor(foo, bar) {
+  return foo ? !bar : bar;
+}
+
 // Helper function to determine whether the given deviceType is a WiFi bridge.
 // A given hub may report one of several valid device type codes.
 export function isWifiBridge(deviceType: DeviceType) {

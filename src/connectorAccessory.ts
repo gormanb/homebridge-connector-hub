@@ -40,7 +40,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
       public readonly accessory: PlatformAccessory,
   ) {
     // Initialize the superclass constructor.
-    super(<ExtendedDeviceInfo>accessory.context.device);
+    super(<ExtendedDeviceInfo>accessory.context.device, platform.config);
 
     // Create a new client connection for this device.
     this.client = new ConnectorHubClient(
