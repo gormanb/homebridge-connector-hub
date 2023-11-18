@@ -5,7 +5,7 @@ import {isIPv4} from 'net';
 import {ConnectorAccessory} from './connectorAccessory';
 import {doDiscovery, identifyTdbuDevices, removeStaleAccessories} from './connectorhub/connector-device-discovery';
 import {ReadDeviceAck} from './connectorhub/connector-hub-api';
-import * as consts from './connectorhub/connector-hub-constants';
+import {kMulticastIp} from './connectorhub/connector-hub-constants';
 import {ExtendedDeviceInfo, makeDeviceName, spliceIndexOf, TDBUType} from './connectorhub/connector-hub-helpers';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 import {Log} from './util/log';
@@ -89,7 +89,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
   private async discoverDevices() {
     if (this.config.hubIps.length === 0) {
       Log.info('No device IPs configured, defaulting to multicast discovery');
-      this.config.hubIps.push(consts.kMulticastIp);
+      this.config.hubIps.push(kMulticastIp);
     }
     // Perform device discovery, then repeat at regular intervals.
     for (const hubIp of this.config.hubIps) {
