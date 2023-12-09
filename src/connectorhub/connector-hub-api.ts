@@ -161,6 +161,7 @@ export interface ReadDeviceReq {
   msgType: 'ReadDevice';
   mac: string;
   deviceType: DeviceType;
+  accessToken: string;
   msgID: string;
 }
 

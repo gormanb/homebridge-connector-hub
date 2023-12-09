@@ -1,14 +1,14 @@
 /* eslint-disable max-len */
 /* eslint-disable indent */
 import * as dgram from 'dgram';
-import {PlatformAccessory} from 'homebridge';
+import {PlatformAccessory, PlatformConfig} from 'homebridge';
 
 import {ConnectorHubPlatform} from '../platform';
 import {Log} from '../util/log';
 
 import {DeviceInfo, DeviceModel, GetDeviceListAck, ReadDeviceAck} from './connector-hub-api';
 import {kMulticastIp, kSendPort} from './connector-hub-constants';
-import {extractHubMac, isInvalidAck, isWifiBridge, makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
+import {computeAccessToken, extractHubMac, isInvalidAck, isWifiBridge, makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
 import {ConnectorHubClient} from './connectorHubClient';
 
 // These constants determine how long each discovery period lasts for, and how
@@ -19,15 +19,15 @@ const kDiscoveryFrequencyMs = 1000;
 // Determines how frequently we perform discovery to find new devices.
 const kDiscoveryIntervalMs = 5 * 60 * 1000;
 
-// Mapping of hub MACs to IP addresses.
+// Mappings of hub MACs to IP addresses and tokens.
 const hubMacToIp = {};
+const hubTokens = {};
 
 // Sends GetDeviceListReq every kDiscoveryFrequencyMs for kDiscoveryDurationMs.
 export async function doDiscovery(
     hubIp: string, platform: ConnectorHubPlatform) {
   Log.debug('Starting discovery for hub:', hubIp);
   const discoveredDevices: string[] = [];
-  const hubTokens = {};
 
   // Create a socket for this discovery session, and add listeners to it.
   const socket = dgram.createSocket('udp4');
@@ -38,6 +38,11 @@ export async function doDiscovery(
       const deviceList = <GetDeviceListAck>(recvMsg);
       hubTokens[deviceList.mac] = deviceList.token;
       hubMacToIp[deviceList.mac] = hubIp;
+      // Compute the accessToken for use with ReadDevice requests.
+      const accessToken = computeAccessToken(
+          platform.config.connectorKey,
+          deviceList.token,
+      );
       // Filter out any devices that have already been discovered this session.
       const undiscoveredDevices = deviceList.data.filter(
           (devInfo) => !discoveredDevices.includes(devInfo.mac));
@@ -45,8 +50,8 @@ export async function doDiscovery(
       for (const devInfo of undiscoveredDevices) {
         // If this entry is the hub itself, skip over it and continue.
         if (!isWifiBridge(devInfo.deviceType)) {
-          socket.send(
-              JSON.stringify(makeReadDeviceRequest(devInfo)), kSendPort, hubIp);
+          const readDevReq = makeReadDeviceRequest(devInfo, accessToken);
+          socket.send(JSON.stringify(readDevReq), kSendPort, hubIp);
         }
       }
     } else if (recvMsg && recvMsg.msgType === 'ReadDeviceAck') {
@@ -108,7 +113,7 @@ export async function removeStaleAccessories(
     }
     // If we have a hub IP and the hub reports that the device exists, do not
     // unregsiter it. We missed it during discovery, wait until the next round.
-    if (hubIp && await checkDeviceExists(hubIp, deviceInfo)) {
+    if (hubIp && await checkDeviceExists(deviceInfo, hubIp, platform.config)) {
       continue;
     }
     // If we're here, then either we don't have a hub IP, implying the device is
@@ -120,8 +125,11 @@ export async function removeStaleAccessories(
 // Check whether the given device exists on the specified hub. A read response
 // with 'actionResult' implies the device does not exist. If we don't get any
 // response, conservatively assume that the device exists.
-async function checkDeviceExists(hubIp: string, deviceInfo: DeviceInfo) {
-  const devReply = await ConnectorHubClient.readDeviceState(hubIp, deviceInfo);
+async function checkDeviceExists(
+    deviceInfo: DeviceInfo, hubIp: string, config: PlatformConfig) {
+  const hubToken = hubTokens[extractHubMac(deviceInfo.mac)];
+  const devReply = await ConnectorHubClient.readDeviceState(
+      deviceInfo, hubIp, hubToken, config.connectorKey);
   if (!devReply) {
     Log.debug('No response when checking stale device:', [hubIp, deviceInfo]);
   }

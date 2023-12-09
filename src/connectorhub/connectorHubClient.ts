@@ -81,17 +81,19 @@ export class ConnectorHubClient {
       private readonly hubIp: string,
       private readonly hubToken: string,
   ) {
-    this.accessToken = computeAccessToken(
-        {connectorKey: this.config.connectorKey, hubToken: this.hubToken});
+    this.accessToken =
+        computeAccessToken(this.config.connectorKey, this.hubToken);
   }
 
   public static getDeviceList(hubIp: string): Promise<DeviceResponse[]> {
     return sendCommandMultiResponse(makeGetDeviceListRequest(), hubIp);
   }
 
-  public static readDeviceState(hubIp: string, deviceInfo: DeviceInfo):
-      Promise<DeviceResponse> {
-    return sendCommand(makeReadDeviceRequest(deviceInfo), hubIp);
+  public static readDeviceState(
+      deviceInfo: DeviceInfo, hubIp: string, hubToken: string,
+      connectorKey: string): Promise<DeviceResponse> {
+    const accessToken = computeAccessToken(connectorKey, hubToken);
+    return sendCommand(makeReadDeviceRequest(deviceInfo, accessToken), hubIp);
   }
 
   public getDeviceState(readType: ReadDeviceType): Promise<DeviceResponse> {
@@ -101,7 +103,8 @@ export class ConnectorHubClient {
           {operation: DeviceOpCode.kStatusQuery});
       return sendCommand(activeReq, this.hubIp);
     }
-    return sendCommand(makeReadDeviceRequest(this.deviceInfo), this.hubIp);
+    return sendCommand(
+        makeReadDeviceRequest(this.deviceInfo, this.accessToken), this.hubIp);
   }
 
   public setOpenCloseState(op: DeviceOpCode): Promise<DeviceResponse> {

@@ -35,7 +35,8 @@ export interface ExtendedDeviceInfo extends DeviceInfo {
 // Helpers which facilitate communication with the hub.
 //
 
-export function computeAccessToken({connectorKey, hubToken}): string {
+export function computeAccessToken(
+    connectorKey: string, hubToken: string): string {
   const aesEcb =
       new aesjs.ModeOfOperation.ecb(aesjs.utils.utf8.toBytes(connectorKey));
   const tokenEnc = aesEcb.encrypt(aesjs.utils.utf8.toBytes(hubToken));
@@ -57,11 +58,13 @@ export function makeGetDeviceListRequest(): GetDeviceListReq {
 // method causes the responsiveness of the devices to degrade over time; there
 // may be some kind of rate-limiting mechanism in the hub. ReadDevice has no
 // such issues, possibly because it reads a cached value from the hub itself.
-export function makeReadDeviceRequest(deviceInfo: DeviceInfo): ReadDeviceReq {
+export function makeReadDeviceRequest(
+    deviceInfo: DeviceInfo, accessToken: string): ReadDeviceReq {
   return {
     msgType: 'ReadDevice',
     mac: deviceInfo.mac,
     deviceType: deviceInfo.deviceType,
+    accessToken: accessToken,
     msgID: makeMsgId(),
   };
 }
