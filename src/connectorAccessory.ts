@@ -1,9 +1,10 @@
+/* eslint-disable max-len */
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
 import {ReadDeviceAck} from './connectorhub/connector-hub-api';
 import {ReadDeviceType} from './connectorhub/connector-hub-constants';
-import {ExtendedDeviceInfo, getBatteryPercent, getDeviceModel, isLowBattery, makeDeviceName} from './connectorhub/connector-hub-helpers';
+import {ExtendedDeviceInfo, getBatteryPercent, getDeviceModel, isInvalidAck, isLowBattery, makeDeviceName} from './connectorhub/connector-hub-helpers';
 import {ConnectorDeviceHandler, ReadDeviceResponse, WriteDeviceResponse} from './connectorhub/connectorDeviceHandler';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
 import {ConnectorHubPlatform} from './platform';
@@ -124,7 +125,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
                                  ReadDeviceType.kActive));
 
     // Check whether the response from the hub is valid.
-    if (newState && this.isInvalidAck(newState)) {
+    if (newState && isInvalidAck(newState)) {
       // Read reply with 'actionResult' implies the device has been removed.
       if (newState.msgType === 'ReadDeviceAck' && newState.actionResult) {
         Log.info('Stale device response received:', newState);
@@ -237,7 +238,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
     // If we didn't receive an ack, or if the ack reports an exception from the
     // hub, or if the ack is invalid, throw a communications error to Homekit.
-    if (!ack || this.isInvalidAck(ack)) {
+    if (!ack || isInvalidAck(ack)) {
       Log.error(
           `Failed to set ${this.accessory.displayName} to ${targetVal}:`,
           (ack || 'No response from hub'));

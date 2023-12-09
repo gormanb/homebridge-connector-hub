@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /* eslint-disable indent */
 import * as dgram from 'dgram';
 import {PlatformAccessory} from 'homebridge';
@@ -7,7 +8,7 @@ import {Log} from '../util/log';
 
 import {DeviceInfo, DeviceModel, GetDeviceListAck, ReadDeviceAck} from './connector-hub-api';
 import {kMulticastIp, kSendPort} from './connector-hub-constants';
-import {extractHubMac, isWifiBridge, makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
+import {extractHubMac, isInvalidAck, isWifiBridge, makeGetDeviceListRequest, makeReadDeviceRequest, TDBUType, tryParse} from './connector-hub-helpers';
 import {ConnectorHubClient} from './connectorHubClient';
 
 // These constants determine how long each discovery period lasts for, and how
@@ -49,6 +50,10 @@ export async function doDiscovery(
         }
       }
     } else if (recvMsg && recvMsg.msgType === 'ReadDeviceAck') {
+      if (isInvalidAck(recvMsg)) {
+        Log.debug('Invalid device response during discovery:', recvMsg);
+        return;
+      }
       const hubToken = hubTokens[extractHubMac(recvMsg.mac)];
       platform.registerDevice(hubIp, recvMsg, hubToken);
       discoveredDevices.push(recvMsg.mac);

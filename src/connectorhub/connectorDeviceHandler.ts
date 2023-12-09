@@ -75,11 +75,6 @@ export class ConnectorDeviceHandler {
     return [hubTarget, this.makeTargetPositionRequest(hubTarget)];
   }
 
-  // Check whether a response received from the hub is invalid.
-  protected isInvalidAck(ack: WriteDeviceResponse|ReadDeviceResponse) {
-    return ack && (!ack.data || ack.actionResult);
-  }
-
   // Given a hub target value, constructs a binary open/close request.
   private makeOpenCloseRequest(hubTarget: number) {
     return {

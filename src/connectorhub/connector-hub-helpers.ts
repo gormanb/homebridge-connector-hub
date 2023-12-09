@@ -4,12 +4,13 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable max-len */
 /* eslint-disable indent */
 import * as aesjs from 'aes-js';
 
 import {Log} from '../util/log';
 
-import {DeviceCmd, DeviceInfo, DeviceModel, DeviceType, GetDeviceListReq, ReadDeviceReq, WriteDeviceReq} from './connector-hub-api';
+import {DeviceCmd, DeviceInfo, DeviceModel, DeviceType, GetDeviceListReq, ReadDeviceAck, ReadDeviceReq, WriteDeviceAck, WriteDeviceReq} from './connector-hub-api';
 import {deviceModels, deviceTypes, kLowBatteryPercent, kMacAddrLength} from './connector-hub-constants';
 
 //
@@ -90,6 +91,11 @@ export function tryParse(jsonStr: string) {
     Log.debug('Received invalid response:', [jsonStr, ex.message]);
     return undefined;
   }
+}
+
+// Check whether a response received from the hub is invalid.
+export function isInvalidAck(ack: WriteDeviceAck|ReadDeviceAck) {
+  return (!ack.data || ack.actionResult);
 }
 
 // Safe indexOf for use with splice. If the element does not exist in the array,
