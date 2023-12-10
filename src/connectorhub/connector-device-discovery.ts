@@ -28,6 +28,7 @@ export async function doDiscovery(
     hubIp: string, platform: ConnectorHubPlatform) {
   Log.debug('Starting discovery for hub:', hubIp);
   const discoveredDevices: string[] = [];
+  let deviceList: GetDeviceListAck;
 
   // Create a socket for this discovery session, and add listeners to it.
   const socket = dgram.createSocket('udp4');
@@ -35,7 +36,7 @@ export async function doDiscovery(
     const recvMsg = tryParse(msg.toString());
     if (recvMsg && recvMsg.msgType === 'GetDeviceListAck') {
       // Extract the device list and record the token associated with this hub.
-      const deviceList = <GetDeviceListAck>(recvMsg);
+      deviceList = <GetDeviceListAck>(recvMsg);
       hubTokens[deviceList.mac] = deviceList.token;
       hubMacToIp[deviceList.mac] = hubIp;
       // Compute the accessToken for use with ReadDevice requests.
@@ -70,30 +71,31 @@ export async function doDiscovery(
     Log.error('Network error:', ex.message);
   });
 
-  let kStartTime = (new Date()).getTime();
+  let kStartTime = Date.now();
   const timer = setInterval(() => {
-    // Send a message to the hub requesting the list of available devices.
-    socket.send(JSON.stringify(makeGetDeviceListRequest()), kSendPort, hubIp);
-
-    // When we have exceeded the discovery duration...
-    if ((new Date()).getTime() - kStartTime > kDiscoveryDurationMs) {
-      // ... if we didn't hear back from the hub, keep going...
-      if (!Object.keys(hubTokens).length) {
-        Log.warn(`Device discovery failed to reach hub ${hubIp}, retrying...`);
-        kStartTime = (new Date()).getTime();
-        return;
-      }
-      // ... otherwise, end discovery and close the socket...
-      Log.debug('Finished discovery for hub:', hubIp);
-      clearInterval(timer);
-      socket.close();
-
-      // ... inform the platform that we have finished discovery...
-      platform.onDiscoveryCompleteForHub(hubIp);
-
-      // ... then schedule the next round of discovery.
-      setTimeout(() => doDiscovery(hubIp, platform), kDiscoveryIntervalMs);
+    // If the discovery period hasn't expired yet, send a message to the hub to
+    // request the list of available devices.
+    if (Date.now() - kStartTime < kDiscoveryDurationMs) {
+      socket.send(JSON.stringify(makeGetDeviceListRequest()), kSendPort, hubIp);
+      return;
     }
+    // If we're here, then the discovery period is complete. If we didn't hear
+    // back from the hub at all, reset the discovery period and keep going...
+    if (!deviceList) {
+      Log.warn(`Device discovery failed to reach hub ${hubIp}, retrying...`);
+      kStartTime = Date.now();
+      return;
+    }
+    // ... otherwise, end discovery and close the socket...
+    Log.debug('Finished discovery for hub:', hubIp);
+    clearInterval(timer);
+    socket.close();
+
+    // ... inform the platform that we have finished discovery...
+    platform.onDiscoveryCompleteForHub(hubIp);
+
+    // ... then schedule the next round of discovery.
+    setTimeout(() => doDiscovery(hubIp, platform), kDiscoveryIntervalMs);
   }, kDiscoveryFrequencyMs);
 }
 
