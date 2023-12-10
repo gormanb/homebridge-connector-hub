@@ -12,6 +12,9 @@ export const kLowBatteryPercent = 15;
 // Length of a hub's MAC address, excluding colons.
 export const kMacAddrLength = 12;
 
+// The value at which devices are half-open, regardless of direction.
+export const kHalfOpenValue = 50;
+
 // Operation states that the hub may report.
 export enum OperationState {
   CLOSED_CLOSING = 0,

@@ -4,7 +4,7 @@ import {PlatformConfig} from 'homebridge';
 import {Log} from '../util/log';
 
 import {DeviceCmd, DeviceOpCode, DeviceType, ReadDeviceAck, WirelessMode, WriteDeviceAck} from './connector-hub-api';
-import {OperationState} from './connector-hub-constants';
+import {kHalfOpenValue, OperationState} from './connector-hub-constants';
 import {ExtendedDeviceInfo, TDBUType, xor} from './connector-hub-helpers';
 
 // Response types we expect for device status. Undefined if no response.
@@ -20,9 +20,6 @@ export class ConnectorDeviceHandler {
   // Cached device status, updated periodically.
   protected currentState: ReadDeviceResponse;
   protected lastState: ReadDeviceResponse;
-
-  // Current target position for this device.
-  protected currentTargetPos = -1;
 
   // By default, a value of 100 is fully closed for connector blinds.
   private kClosedValue = 100;
@@ -147,13 +144,13 @@ export class ConnectorDeviceHandler {
       deviceState.data.currentPosition = target;
       return deviceState;
     }
-    // If we reach here, then neither state nor position are available.
+    // If we reach here, then no exact position information can be deduced.
     Log.debug('No explicit position data in device state:', deviceState);
-    // If there is an explicit target set, adopt it as the current position.
-    // Otherwise, set the target and current positions to the closed value.
-    deviceState.data.currentPosition = this.currentTargetPos < 0 ?
-        (this.currentTargetPos = this.kClosedValue) :
-        this.currentTargetPos;
+    // The blind is stopped somewhere between closed and open. We approximate
+    // this by setting the position to half-open. The periodic update routine
+    // will assume that the movement has completed and will set the target
+    // position to the same value, so we will end up in a consistent state.
+    deviceState.data.currentPosition = kHalfOpenValue;
     return deviceState;
   }
 
