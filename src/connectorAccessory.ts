@@ -27,9 +27,6 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
   private batteryService: Service;
   private wcService: Service;
 
-  // Current target position for this device.
-  private currentTargetPos = -1;
-
   // When this counter is 0 mod kActiveReadRatio, perform an active read.
   private passiveReadTicker = -1;
 

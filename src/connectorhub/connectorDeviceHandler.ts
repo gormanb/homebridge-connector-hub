@@ -21,6 +21,9 @@ export class ConnectorDeviceHandler {
   protected currentState: ReadDeviceResponse;
   protected lastState: ReadDeviceResponse;
 
+  // Current target position for this device.
+  protected currentTargetPos = -1;
+
   // By default, a value of 100 is fully closed for connector blinds.
   private kClosedValue = 100;
 
@@ -124,15 +127,9 @@ export class ConnectorDeviceHandler {
   // is in the format expected by the plugin. Mutates and returns the input.
   protected sanitizeDeviceState(deviceState: ReadDeviceAck) {
     // Convert a TDBU reading into a generic device reading.
-    for (const field in this.fields) {
-      if (deviceState.data[this.fields[field]] !== undefined) {
-        deviceState.data[field] = deviceState.data[this.fields[field]];
-      }
+    if (this.deviceInfo.tdbuType !== TDBUType.kNone) {
+      deviceState = this.tdbuToGenericState(deviceState);
     }
-    // Merge the new state into the previous state. Important for devices which
-    // may report only partial state on each refresh, e.g. TDBU blinds.
-    deviceState.data =
-        Object.assign({}, this.lastState?.data, deviceState.data);
     // Depending on the device type, the hub may return an explicit position or
     // a simple open / closed state. In the former case, don't change anything.
     if (deviceState.data.currentPosition !== undefined) {
@@ -140,7 +137,6 @@ export class ConnectorDeviceHandler {
     }
     // Otherwise, convert the open / closed state into a currentPosition.
     if (deviceState.data.operation <= DeviceOpCode.kOpen) {
-      // Convert the device's operation code to a position value.
       deviceState.data.currentPosition =
           this.opCodeToPosition(deviceState.data.operation);
       return deviceState;
@@ -152,8 +148,26 @@ export class ConnectorDeviceHandler {
       return deviceState;
     }
     // If we reach here, then neither state nor position are available.
-    Log.debug('Failed to sanitize device state:', deviceState);
-    deviceState.data.currentPosition = this.kClosedValue;
+    Log.debug('No explicit position data in device state:', deviceState);
+    // If there is an explicit target set, adopt it as the current position.
+    // Otherwise, set the target and current positions to the closed value.
+    deviceState.data.currentPosition = this.currentTargetPos < 0 ?
+        (this.currentTargetPos = this.kClosedValue) :
+        this.currentTargetPos;
+    return deviceState;
+  }
+
+  // Convert a TDBU device state to generic format. If the current state does
+  // not have an entry for a particular field, merge it from the last state;
+  // some devices may report only partial state on each refresh.
+  private tdbuToGenericState(deviceState: ReadDeviceAck) {
+    for (const field in this.fields) {
+      if (deviceState.data[this.fields[field]] !== undefined) {
+        deviceState.data[field] = deviceState.data[this.fields[field]];
+      } else {
+        deviceState.data[field] = this.lastState?.data[this.fields[field]];
+      }
+    }
     return deviceState;
   }
 
