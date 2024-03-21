@@ -5,7 +5,7 @@ import {isIPv4} from 'net';
 import {ConnectorAccessory} from './connectorAccessory';
 import {doDiscovery, identifyTdbuDevices, removeStaleAccessories} from './connectorhub/connector-device-discovery';
 import {ReadDeviceAck} from './connectorhub/connector-hub-api';
-import {kMulticastIp} from './connectorhub/connector-hub-constants';
+import {kMulticastIp, kRetrySettings} from './connectorhub/connector-hub-constants';
 import {ExtendedDeviceInfo, makeDeviceName, spliceIndexOf, TDBUType} from './connectorhub/connector-hub-helpers';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 import {Log} from './util/log';
@@ -44,6 +44,10 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       return;
     }
 
+    // Update the retry settings to reflect the config values.
+    kRetrySettings.maxRetries = config.maxRetries;
+    kRetrySettings.retryDelayMs = config.retryDelayMs;
+
     // Notify the user that we have completed platform initialization.
     Log.debug('Finished initializing platform');
 
@@ -61,11 +65,19 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     if (!config.connectorKey) {
       validationErrors.push('App Key has not been configured');
     }
+    config.retryDelayMs = (config.retryDelayMs || kRetrySettings.retryDelayMs);
+    config.maxRetries = (config.maxRetries || kRetrySettings.maxRetries);
     config.reverseDirection = (config.reverseDirection || []);
     config.hubIps = (config.hubIps || []);
     const invalidIps = config.hubIps.filter((ip: string) => !isIPv4(ip));
     for (const invalidIp of invalidIps) {
       validationErrors.push(`Hub IP is not valid IPv4: ${invalidIp}`);
+    }
+    if (config.maxRetries <= 0) {
+      validationErrors.push('Max request retries must be > 0');
+    }
+    if (config.retryDelayMs <= 0) {
+      validationErrors.push('Request retry delay must be > 0');
     }
     return validationErrors;
   }

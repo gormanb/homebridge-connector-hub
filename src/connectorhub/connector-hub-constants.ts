@@ -15,6 +15,12 @@ export const kMacAddrLength = 12;
 // The value at which devices are half-open, regardless of direction.
 export const kHalfOpenValue = 50;
 
+// Retry settings used when sending requests to the hub.
+export const kRetrySettings = {
+  maxRetries: 2,
+  retryDelayMs: 250,
+};
+
 // Operation states that the hub may report.
 export enum OperationState {
   CLOSED_CLOSING = 0,

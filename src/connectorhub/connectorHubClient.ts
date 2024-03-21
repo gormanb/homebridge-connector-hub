@@ -7,11 +7,8 @@ import {PlatformConfig} from 'homebridge';
 import {Log} from '../util/log';
 
 import {DeviceCmd, DeviceInfo, DeviceOpCode, GetDeviceListAck, GetDeviceListReq, ReadDeviceAck, ReadDeviceReq, WriteDeviceAck, WriteDeviceReq} from './connector-hub-api';
-import {kSendPort, ReadDeviceType} from './connector-hub-constants';
+import {kRetrySettings, kSendPort, ReadDeviceType} from './connector-hub-constants';
 import {computeAccessToken, makeGetDeviceListRequest, makeReadDeviceRequest, makeWriteDeviceRequest, tryParse} from './connector-hub-helpers';
-
-const kSocketTimeoutMs = 250;
-const kMaxRetries = 3;
 
 // Types we expect for connector hub requests and responses.
 type DeviceRequest = GetDeviceListReq|WriteDeviceReq|ReadDeviceReq;
@@ -24,8 +21,12 @@ async function sendCommandMultiResponse(
   // Array of responses received from the hub(s).
   const responses: DeviceResponse[] = [];
 
+  // Extract the retry settings specified in the plugin configuration.
+  const [maxRetries, socketTimeoutMs] =
+      [kRetrySettings.maxRetries, kRetrySettings.retryDelayMs];
+
   // Retry up to kMaxRetries times to overcome any transient network issues.
-  for (let attempt = 0; attempt < kMaxRetries && !responses.length; ++attempt) {
+  for (let attempt = 0; attempt <= maxRetries && !responses.length; ++attempt) {
     try {
       // Create a socket to service this request.
       const socket = DgramAsPromised.createSocket('udp4');
@@ -42,7 +43,7 @@ async function sendCommandMultiResponse(
       do {
         // Set a maximum timeout for the request. If we get a response within
         // the timeout, clear the timeout for the next iteration.
-        const timer = setTimeout(() => socket.close(), kSocketTimeoutMs);
+        const timer = setTimeout(() => socket.close(), socketTimeoutMs);
         const recvMsg = await sendResult && await socket.recv();
 
         // Try to parse the response and add it to the list of responses.

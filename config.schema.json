@@ -38,6 +38,18 @@
       "type": "boolean",
       "default": false
     },
+    "maxRetries": {
+      "title": "Max Request Retries",
+      "description": "Max number of times to retry a failed request to the hub",
+      "type": "integer",
+      "default": 2
+    },
+    "retryDelayMs": {
+      "title": "Retry Delay",
+      "description": "Delay in milliseconds between retries",
+      "type": "integer",
+      "default": 250
+    },
     "enableDebugLog": {
       "title": "Debug Logging",
       "type": "boolean",
@@ -86,6 +98,8 @@
           ]
         },
         "invertReverseList",
+        "maxRetries",
+        "retryDelayMs",
         "enableDebugLog"
       ]
     }
