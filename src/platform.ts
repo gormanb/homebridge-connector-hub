@@ -5,7 +5,7 @@ import {isIPv4} from 'net';
 import {ConnectorAccessory} from './connectorAccessory';
 import {doDiscovery, identifyTdbuDevices, removeStaleAccessories} from './connectorhub/connector-device-discovery';
 import {ReadDeviceAck} from './connectorhub/connector-hub-api';
-import {kMulticastIp, kRetrySettings} from './connectorhub/connector-hub-constants';
+import {kMulticastIp, kNetworkSettings} from './connectorhub/connector-hub-constants';
 import {ExtendedDeviceInfo, makeDeviceName, spliceIndexOf, TDBUType} from './connectorhub/connector-hub-helpers';
 import {PLATFORM_NAME, PLUGIN_NAME} from './settings';
 import {Log} from './util/log';
@@ -45,8 +45,9 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     }
 
     // Update the retry settings to reflect the config values.
-    kRetrySettings.maxRetries = config.maxRetries;
-    kRetrySettings.retryDelayMs = config.retryDelayMs;
+    kNetworkSettings.maxRetries = config.maxRetries;
+    kNetworkSettings.retryDelayMs = config.retryDelayMs;
+    kNetworkSettings.refreshIntervalMs = config.refreshIntervalMs;
 
     // Notify the user that we have completed platform initialization.
     Log.debug('Finished initializing platform');
@@ -65,13 +66,21 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
     if (!config.connectorKey) {
       validationErrors.push('App Key has not been configured');
     }
-    config.retryDelayMs = (config.retryDelayMs || kRetrySettings.retryDelayMs);
-    config.maxRetries = (config.maxRetries || kRetrySettings.maxRetries);
+    // Enforce default values for all applicable fields.
+    config.refreshIntervalMs =
+        (config.refreshIntervalMs || kNetworkSettings.refreshIntervalMs);
+    config.retryDelayMs =
+        (config.retryDelayMs || kNetworkSettings.retryDelayMs);
+    config.maxRetries = (config.maxRetries || kNetworkSettings.maxRetries);
     config.reverseDirection = (config.reverseDirection || []);
     config.hubIps = (config.hubIps || []);
+    // Check for invalid entries and compile a list of all validation errors.
     const invalidIps = config.hubIps.filter((ip: string) => !isIPv4(ip));
     for (const invalidIp of invalidIps) {
       validationErrors.push(`Hub IP is not valid IPv4: ${invalidIp}`);
+    }
+    if (config.refreshIntervalMs <= 0) {
+      validationErrors.push('Refresh interval must be > 0');
     }
     if (config.maxRetries <= 0) {
       validationErrors.push('Max request retries must be > 0');

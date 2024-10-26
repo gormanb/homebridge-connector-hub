@@ -3,7 +3,7 @@
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
 import {ReadDeviceAck} from './connectorhub/connector-hub-api';
-import {ReadDeviceType} from './connectorhub/connector-hub-constants';
+import {kNetworkSettings, ReadDeviceType} from './connectorhub/connector-hub-constants';
 import {ExtendedDeviceInfo, getBatteryPercent, getDeviceModel, isInvalidAck, isLowBattery, makeDeviceName} from './connectorhub/connector-hub-helpers';
 import {ConnectorDeviceHandler, ReadDeviceResponse, WriteDeviceResponse} from './connectorhub/connectorDeviceHandler';
 import {ConnectorHubClient} from './connectorhub/connectorHubClient';
@@ -15,13 +15,9 @@ import {Log} from './util/log';
  * WindowCovering and Battery services for the device.
  */
 export class ConnectorAccessory extends ConnectorDeviceHandler {
-  // Intervals at which we passively and actively refresh the device state.
-  private static readonly kRefreshInterval = 5 * 1000;
+  // Intervals at which we actively rather than passively read the device state.
   private static readonly kActiveReadInterval = 60 * 60 * 1000;
-
-  // Number of passive reads per active read, based on the intervals above.
-  private static readonly kActiveReadRatio =
-      Math.round(this.kActiveReadInterval / this.kRefreshInterval);
+  private readonly kActiveReadRatio: number;
 
   private client: ConnectorHubClient;
   private batteryService: Service;
@@ -43,6 +39,11 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     // Initialize the superclass constructor.
     super(<ExtendedDeviceInfo>accessory.context.device, platform.config);
 
+    // Set the number of passive reads per active read.
+    this.kActiveReadRatio = Math.ceil(
+        ConnectorAccessory.kActiveReadInterval /
+        kNetworkSettings.refreshIntervalMs);
+
     // Create a new client connection for this device.
     this.client = new ConnectorHubClient(
         this.platform.config, this.deviceInfo, this.deviceInfo.hubIp,
@@ -61,7 +62,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     // Initialize the device state and set up a periodic refresh.
     this.updateDeviceStatus();
     this.updateTimer = setInterval(
-        () => this.updateDeviceStatus(), ConnectorAccessory.kRefreshInterval);
+        () => this.updateDeviceStatus(), kNetworkSettings.refreshIntervalMs);
 
     // Register handlers for the CurrentPosition Characteristic.
     this.wcService
@@ -116,8 +117,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
    */
   async updateDeviceStatus() {
     // Determine whether to perform a passive or active read.
-    this.passiveReadTicker =
-        (++this.passiveReadTicker % ConnectorAccessory.kActiveReadRatio);
+    this.passiveReadTicker = (++this.passiveReadTicker % this.kActiveReadRatio);
 
     // Obtain the latest status from the device.
     let newState = <ReadDeviceResponse>(await this.client.getDeviceState(

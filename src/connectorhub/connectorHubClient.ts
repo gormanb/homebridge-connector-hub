@@ -7,7 +7,7 @@ import {PlatformConfig} from 'homebridge';
 import {Log} from '../util/log';
 
 import {DeviceCmd, DeviceInfo, DeviceOpCode, GetDeviceListAck, GetDeviceListReq, ReadDeviceAck, ReadDeviceReq, WriteDeviceAck, WriteDeviceReq} from './connector-hub-api';
-import {kRetrySettings, kSendPort, ReadDeviceType} from './connector-hub-constants';
+import {kNetworkSettings, kSendPort, ReadDeviceType} from './connector-hub-constants';
 import {computeAccessToken, makeGetDeviceListRequest, makeReadDeviceRequest, makeWriteDeviceRequest, tryParse} from './connector-hub-helpers';
 
 // Types we expect for connector hub requests and responses.
@@ -23,7 +23,7 @@ async function sendCommandMultiResponse(
 
   // Extract the retry settings specified in the plugin configuration.
   const [maxRetries, socketTimeoutMs] =
-      [kRetrySettings.maxRetries, kRetrySettings.retryDelayMs];
+      [kNetworkSettings.maxRetries, kNetworkSettings.retryDelayMs];
 
   // Retry up to kMaxRetries times to overcome any transient network issues.
   for (let attempt = 0; attempt <= maxRetries && !responses.length; ++attempt) {

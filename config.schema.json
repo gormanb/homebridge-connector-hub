@@ -38,16 +38,25 @@
       "type": "boolean",
       "default": false
     },
+    "refreshIntervalMs": {
+      "title": "Refresh Interval",
+      "description": "Interval in milliseconds between device status refreshes",
+      "type": "integer",
+      "required": true,
+      "default": 5000
+    },
     "maxRetries": {
       "title": "Max Request Retries",
       "description": "Max number of times to retry a failed request to the hub",
       "type": "integer",
+      "required": true,
       "default": 2
     },
     "retryDelayMs": {
       "title": "Retry Delay",
       "description": "Delay in milliseconds between retries",
       "type": "integer",
+      "required": true,
       "default": 250
     },
     "enableDebugLog": {
@@ -98,6 +107,7 @@
           ]
         },
         "invertReverseList",
+        "refreshIntervalMs",
         "maxRetries",
         "retryDelayMs",
         "enableDebugLog"
