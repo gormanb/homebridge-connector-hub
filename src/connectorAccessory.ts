@@ -15,22 +15,23 @@ import {Log} from './util/log';
  * WindowCovering and Battery services for the device.
  */
 export class ConnectorAccessory extends ConnectorDeviceHandler {
-  // Intervals at which we actively rather than passively read the device state.
+  // Interval at which we actively rather than passively read the device state.
   private static readonly kActiveReadInterval = 60 * 60 * 1000;
-  private readonly kActiveReadRatio: number;
+  private performActiveRead = true;
 
+  // Network client used to communicate with the hub.
   private client: ConnectorHubClient;
+
+  // Window covering and battery services exposed to Homekit.
   private batteryService: Service;
   private wcService: Service;
 
   // Current target position for this device.
   private currentTargetPos = -1;
 
-  // When this counter is 0 mod kActiveReadRatio, perform an active read.
-  private passiveReadTicker = -1;
-
-  // The handler for the periodic refresh process.
-  private updateTimer: NodeJS.Timer;
+  // Handlers for the periodic refresh and active read timers.
+  private periodicRefreshTimer: NodeJS.Timer;
+  private activeReadTimer: NodeJS.Timer;
 
   constructor(
       private readonly platform: ConnectorHubPlatform,
@@ -38,11 +39,6 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
   ) {
     // Initialize the superclass constructor.
     super(<ExtendedDeviceInfo>accessory.context.device, platform.config);
-
-    // Set the number of passive reads per active read.
-    this.kActiveReadRatio = Math.ceil(
-        ConnectorAccessory.kActiveReadInterval /
-        kNetworkSettings.refreshIntervalMs);
 
     // Create a new client connection for this device.
     this.client = new ConnectorHubClient(
@@ -61,8 +57,13 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
     // Initialize the device state and set up a periodic refresh.
     this.updateDeviceStatus();
-    this.updateTimer = setInterval(
+    this.periodicRefreshTimer = setInterval(
         () => this.updateDeviceStatus(), kNetworkSettings.refreshIntervalMs);
+
+    // Set up a timer to indicate when we should perform active reads.
+    this.activeReadTimer = setInterval(() => {
+      this.performActiveRead = true;
+    }, ConnectorAccessory.kActiveReadInterval);
 
     // Register handlers for the CurrentPosition Characteristic.
     this.wcService
@@ -116,13 +117,12 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
    * device state when a movement completes.
    */
   async updateDeviceStatus() {
-    // Determine whether to perform a passive or active read.
-    this.passiveReadTicker = (++this.passiveReadTicker % this.kActiveReadRatio);
-
-    // Obtain the latest status from the device.
+    // Determine whether we should perform an active or passive read, obtain the
+    // latest status from the device, and reset the active read tracker.
     let newState = <ReadDeviceResponse>(await this.client.getDeviceState(
-        this.passiveReadTicker ? ReadDeviceType.kPassive :
-                                 ReadDeviceType.kActive));
+        this.performActiveRead ? ReadDeviceType.kActive :
+                                 ReadDeviceType.kPassive));
+    this.performActiveRead = false;
 
     // Check whether the response from the hub is valid.
     if (newState && isInvalidAck(newState)) {
@@ -130,7 +130,8 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
       if (newState.msgType === 'ReadDeviceAck' && newState.actionResult) {
         Log.info('Stale device response received:', newState);
         this.platform.unregisterDevice(this.accessory);
-        clearInterval(this.updateTimer);
+        clearInterval(this.periodicRefreshTimer);
+        clearInterval(this.activeReadTimer);
         return;
       }
       // Otherwise, we may have a write reply error due to invalid access token.
