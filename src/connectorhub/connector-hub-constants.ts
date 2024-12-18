@@ -19,7 +19,7 @@ export const kHalfOpenValue = 50;
 export const kNetworkSettings = {
   maxRetries: 2,
   retryDelayMs: 250,
-  refreshIntervalMs: 5000,
+  refreshIntervalMs: 10000,
 };
 
 // Operation states that the hub may report.
