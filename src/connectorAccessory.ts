@@ -2,7 +2,7 @@
 /* eslint-disable indent */
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
-import {ReadDeviceAck} from './connectorhub/connector-hub-api';
+import {ReadDeviceAck, VoltageMode} from './connectorhub/connector-hub-api';
 import {kNetworkSettings, ReadDeviceType} from './connectorhub/connector-hub-constants';
 import {ExtendedDeviceInfo, getBatteryPercent, getDeviceModel, isInvalidAck, isLowBattery, makeDeviceName} from './connectorhub/connector-hub-helpers';
 import {ConnectorDeviceHandler, ReadDeviceResponse, WriteDeviceResponse} from './connectorhub/connectorDeviceHandler';
@@ -11,8 +11,8 @@ import {ConnectorHubPlatform} from './platform';
 import {Log} from './util/log';
 
 /**
- * An instance of this class is created for each accessory. Exposes both the
- * WindowCovering and Battery services for the device.
+ * An instance of this class is created for each accessory. Exposes the
+ * WindowCovering service and, for battery-powered devices, a Battery service.
  */
 export class ConnectorAccessory extends ConnectorDeviceHandler {
   // Interval at which we actively rather than passively read the device state.
@@ -22,8 +22,9 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
   // Network client used to communicate with the hub.
   private client: ConnectorHubClient;
 
-  // Window covering and battery services exposed to Homekit.
-  private batteryService: Service;
+  // Window covering and battery services exposed to Homekit. The battery service
+  // is absent for mains-powered (AC) motors, which do not report a battery.
+  private batteryService?: Service;
   private wcService: Service;
 
   // Current target position for this device.
@@ -50,10 +51,9 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
         this.accessory.getService(this.platform.Service.WindowCovering) ||
         this.accessory.addService(this.platform.Service.WindowCovering);
 
-    // Add a service to report the battery level.
-    this.batteryService =
-        this.accessory.getService(this.platform.Service.Battery) ||
-        this.accessory.addService(this.platform.Service.Battery);
+    // Get the Battery service if it exists. Whether the device needs one is
+    // decided on the first successful read, in setAccessoryInformation.
+    this.batteryService = this.accessory.getService(this.platform.Service.Battery);
 
     // Initialize the device state and set up a periodic refresh.
     this.updateDeviceStatus();
@@ -87,13 +87,26 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
 
     // Update the accessory display name, in case it wasn't set already.
     this.accessory.displayName = makeDeviceName(this.deviceInfo);
-    this.platform.api.updatePlatformAccessories([this.accessory]);
 
     // Set the service names. These are the default names displayed by Homekit.
     this.wcService.setCharacteristic(
         Characteristic.Name, this.accessory.displayName);
-    this.batteryService.setCharacteristic(
-        Characteristic.Name, `${this.accessory.displayName} Battery`);
+
+    // AC motors report no battery voltage, so a Battery service would always
+    // show a meaningless value. Only expose it for devices that may have one.
+    if (deviceState.data.voltageMode === VoltageMode.kACMotor &&
+        !deviceState.data.batteryLevel) {
+      if (this.batteryService) {
+        this.accessory.removeService(this.batteryService);
+        this.batteryService = undefined;
+      }
+    } else {
+      this.batteryService = this.batteryService ||
+          this.accessory.addService(this.platform.Service.Battery);
+      this.batteryService.setCharacteristic(
+          Characteristic.Name, `${this.accessory.displayName} Battery`);
+    }
+    this.platform.api.updatePlatformAccessories([this.accessory]);
 
     // Update default accessory name and additional information in Homekit.
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
@@ -179,7 +192,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
     // Update the battery level if it has changed since the last refresh.
     const lastBatteryPC = getBatteryPercent(this.lastState?.data.batteryLevel);
     const batteryPC = getBatteryPercent(newState?.data.batteryLevel);
-    if (batteryPC !== lastBatteryPC) {
+    if (this.batteryService && batteryPC !== lastBatteryPC) {
       // Log a message for the user, then push the new battery state to Homekit.
       Log.info('Updating battery:', [this.accessory.displayName, batteryPC]);
       this.updateBatteryService();
@@ -208,7 +221,7 @@ export class ConnectorAccessory extends ConnectorDeviceHandler {
   // Push the current values of the battery service properties to Homekit.
   updateBatteryService() {
     // We only update if we have an up-to-date device state.
-    if (this.currentState) {
+    if (this.currentState && this.batteryService) {
       this.batteryService.updateCharacteristic(
           this.platform.Characteristic.BatteryLevel,
           getBatteryPercent(this.currentState.data.batteryLevel));

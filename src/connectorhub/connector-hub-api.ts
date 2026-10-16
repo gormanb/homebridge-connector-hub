@@ -48,7 +48,7 @@ enum HubState {
   kUpdating = 3
 }
 
-enum VoltageMode {
+export enum VoltageMode {
   kACMotor = 0,
   kDCMotor = 1
 }
