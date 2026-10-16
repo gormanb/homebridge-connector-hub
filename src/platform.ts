@@ -86,7 +86,7 @@ export class ConnectorHubPlatform implements DynamicPlatformPlugin {
       validationErrors.push('Max request retries must be > 0');
     }
     if (config.retryDelayMs <= 0) {
-      validationErrors.push('Request retry delay must be > 0');
+      validationErrors.push('Request timeout (retryDelayMs) must be > 0');
     }
     return validationErrors;
   }

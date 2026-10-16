@@ -53,8 +53,8 @@
       "default": 2
     },
     "retryDelayMs": {
-      "title": "Retry Delay",
-      "description": "Delay in milliseconds between retries",
+      "title": "Request Timeout",
+      "description": "How long in milliseconds to wait for the hub to reply before retrying the request. Replies that arrive later are discarded, so increase this on slow or busy networks",
       "type": "integer",
       "required": true,
       "default": 250
